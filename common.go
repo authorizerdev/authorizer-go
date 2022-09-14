@@ -1,0 +1,69 @@
+package authorizer
+
+import "fmt"
+
+var (
+	UserFragment = `
+		id
+		email
+		email_verified
+		given_name
+		family_name
+		middle_name
+		nickname
+		preferred_username
+		picture
+		signup_methods
+		gender
+		birthdate
+		phone_number
+		phone_number_verified
+		roles
+		created_at
+		updated_at
+		is_multi_factor_auth_enabled
+	`
+
+	AuthTokenFragment = fmt.Sprintf(`
+		message
+		access_token
+		expires_in
+		refresh_token
+		id_token
+		should_show_otp_screen
+		user {
+			%s
+		}`, UserFragment,
+	)
+)
+
+type User struct {
+	ID                       string    `json:"id"`
+	Email                    string    `json:"email"`
+	PreferredUsername        string    `json:"preferred_username"`
+	EmailVerified            bool      `json:"email_verified"`
+	SignupMethods            string    `json:"signup_methods"`
+	GivenName                *string   `json:"given_name"`
+	FamilyName               *string   `json:"family_name"`
+	MiddleName               *string   `json:"middle_name"`
+	Nickname                 *string   `json:"nickname"`
+	Picture                  *string   `json:"picture"`
+	Gender                   *string   `json:"gender"`
+	Birthdate                *string   `json:"birthdate"`
+	PhoneNumber              *string   `json:"phone_number"`
+	PhoneNumberVerified      *bool     `json:"phone_number_verified"`
+	Roles                    []*string `json:"roles"`
+	CreatedAt                int64     `json:"created_at"`
+	UpdatedAt                int64     `json:"updated_at"`
+	IsMultiFactorAuthEnabled *bool     `json:"is_multi_factor_auth_enabled"`
+}
+
+type AuthTokenResponse struct {
+	Message      *string `json:"message,omitempty"`
+	AccessToken  *string `json:"access_token,omitempty"`
+	ExpiresIn    *int64  `json:"expires_in,omitempty"`
+	IdToken      *string `json:"id_token,omitempty"`
+	RefreshToken *string `json:"refresh_token,omitempty"`
+	OtpSent      *bool   `json:"should_show_otp_screen"`
+	User         *User   `json:"user,omitempty"`
+}
