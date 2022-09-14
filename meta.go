@@ -1,4 +1,4 @@
 package authorizer
 
-func (c *authorizerClient) Meta() {
+func (c *AuthorizerClient) Meta() {
 }

@@ -1,7 +1,8 @@
 package main
 
-import "authorizer-go/example"
+import "authorizer-go/examples"
 
 func main() {
-	example.LoginExample()
+	// examples.LoginExample()
+	examples.ForgotPasswordInputExample()
 }

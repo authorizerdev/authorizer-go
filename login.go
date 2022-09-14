@@ -5,22 +5,26 @@ import (
 	"fmt"
 )
 
-// LoginType defines attributes for login request
-type LoginInput struct {
+// LoginRequest defines attributes for login request
+type LoginRequest struct {
 	Email    string    `json:"email"`
 	Password string    `json:"password"`
 	Roles    []*string `json:"roles,omitempty"`
 	Scope    []*string `json:"scope,omitempty"`
 }
 
-func (c *authorizerClient) Login(req *LoginInput) (*AuthTokenResponse, error) {
+// Login is method attached to authorizerClient
+// It performs login mutation on authorizer instance.
+// It takes LoginRequest reference as parameter and returns AuthTokenResponse or error
+// For implementation details check examples/login.go
+func (c *AuthorizerClient) Login(req *LoginRequest) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
 		Query: fmt.Sprintf(`
 		mutation login($data: LoginInput!) {
 			login(params: $data) {
 				%s
 			}
-		}`, AuthTokenFragment),
+		}`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{
 			"data": req,
 		},

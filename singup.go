@@ -1,4 +1,4 @@
 package authorizer
 
-func (c *authorizerClient) SignUp() {
+func (c *AuthorizerClient) SignUp() {
 }

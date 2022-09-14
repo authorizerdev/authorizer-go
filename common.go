@@ -2,7 +2,8 @@ package authorizer
 
 import "fmt"
 
-var (
+const (
+	// UserFragment defines graphql fragment for all the user attributes
 	UserFragment = `
 		id
 		email
@@ -23,8 +24,11 @@ var (
 		updated_at
 		is_multi_factor_auth_enabled
 	`
+)
 
-	AuthTokenFragment = fmt.Sprintf(`
+// AuthTokenResponseFragment defines graphql response for auth token type,
+// which is common across various authorizer operations
+var AuthTokenResponseFragment = fmt.Sprintf(`
 		message
 		access_token
 		expires_in
@@ -34,9 +38,9 @@ var (
 		user {
 			%s
 		}`, UserFragment,
-	)
 )
 
+// User defines attributes for user instance
 type User struct {
 	ID                       string    `json:"id"`
 	Email                    string    `json:"email"`
@@ -58,6 +62,8 @@ type User struct {
 	IsMultiFactorAuthEnabled *bool     `json:"is_multi_factor_auth_enabled"`
 }
 
+// AuthTokenResponse defines attribute for auth token response,
+// which is common across various authorizer operations
 type AuthTokenResponse struct {
 	Message      *string `json:"message,omitempty"`
 	AccessToken  *string `json:"access_token,omitempty"`
@@ -66,4 +72,10 @@ type AuthTokenResponse struct {
 	RefreshToken *string `json:"refresh_token,omitempty"`
 	OtpSent      *bool   `json:"should_show_otp_screen"`
 	User         *User   `json:"user,omitempty"`
+}
+
+// Response defines attribute for Response graphql type
+// it is common across various authorizer operations
+type Response struct {
+	Message string `json:"message"`
 }

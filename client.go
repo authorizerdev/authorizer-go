@@ -1,3 +1,5 @@
+// Package authorizer provides client and methods using which you can
+// perform various graphql operations to your authorizer instance
 package authorizer
 
 import (
@@ -5,16 +7,17 @@ import (
 	"strings"
 )
 
-// authorizerClient defines the attributes required to initiate authorizer client
-type authorizerClient struct {
+// AuthorizerClient defines the attributes required to initiate authorizer client
+type AuthorizerClient struct {
 	ClientID      string
 	AuthorizerURL string
 	RedirectURL   string
 	ExtraHeaders  map[string]string
 }
 
-// NewAuthorizerClient creates an authorizer client instance and returns reference to it
-func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeaders map[string]string) (*authorizerClient, error) {
+// NewAuthorizerClient creates an authorizer client instance.
+// It returns reference to authorizer client instance or error.
+func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeaders map[string]string) (*AuthorizerClient, error) {
 	if strings.TrimSpace(clientID) == "" {
 		return nil, fmt.Errorf("clientID missing")
 	}
@@ -36,7 +39,7 @@ func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeade
 		headers["x-authorizer-url"] = authorizerURL
 	}
 
-	return &authorizerClient{
+	return &AuthorizerClient{
 		RedirectURL:   strings.TrimSuffix(redirectURL, "/"),
 		AuthorizerURL: strings.TrimSuffix(authorizerURL, "/"),
 		ClientID:      clientID,

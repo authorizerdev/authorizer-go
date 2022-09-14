@@ -1,4 +1,4 @@
-package example
+package examples
 
 const (
 	// Authorizer client identifier, obtained from authorizer dashboard

@@ -24,7 +24,7 @@ type GraphQLResponse struct {
 	Data   interface{}     `json:"data"`
 }
 
-func (c *authorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[string]string) ([]byte, error) {
+func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[string]string) ([]byte, error) {
 	// Marshal it into JSON prior to requesting
 	jsonReq, err := json.Marshal(req)
 	if err != nil {
