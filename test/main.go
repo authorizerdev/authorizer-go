@@ -3,7 +3,8 @@ package main
 import "authorizer-go/examples"
 
 func main() {
-	// examples.LoginExample()
+	examples.LoginExample()
 	// examples.ForgotPasswordInputExample()
-	examples.GetMetaDataExample()
+	// examples.GetMetaDataExample()
+	examples.GetProfileExample()
 }

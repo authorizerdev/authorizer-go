@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -30,8 +29,6 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(string(jsonReq))
 
 	client := http.Client{}
 	httpReq, err := http.NewRequest(http.MethodPost, c.AuthorizerURL+"/graphql", bytes.NewReader(jsonReq))

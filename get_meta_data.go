@@ -24,7 +24,7 @@ type MetaDataResponse struct {
 // GetMetaData is method attached to AuthorizerClient
 // It performs meta query on authorizer instance.
 // It returns MetaResponse reference or error
-// For implementation details check GetMetadataExample examples/meta.go
+// For implementation details check GetMetadataExample examples/get_meta_data.go
 func (c *AuthorizerClient) GetMetaData() (*MetaDataResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
 		Query:     `query { meta { version client_id is_google_login_enabled is_facebook_login_enabled is_github_login_enabled is_linkedin_login_enabled is_apple_login_enabled is_twitter_login_enabled is_email_verification_enabled is_basic_authentication_enabled is_magic_link_login_enabled is_sign_up_enabled is_strong_password_enabled } }`,
