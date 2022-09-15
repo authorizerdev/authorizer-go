@@ -13,18 +13,13 @@ type LoginRequest struct {
 	Scope    []*string `json:"scope,omitempty"`
 }
 
-// Login is method attached to authorizerClient
+// Login is method attached to AuthorizerClient
 // It performs login mutation on authorizer instance.
 // It takes LoginRequest reference as parameter and returns AuthTokenResponse or error
-// For implementation details check examples/login.go
+// For implementation details check LoginExample examples/login.go
 func (c *AuthorizerClient) Login(req *LoginRequest) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: fmt.Sprintf(`
-		mutation login($data: LoginInput!) {
-			login(params: $data) {
-				%s
-			}
-		}`, AuthTokenResponseFragment),
+		Query: fmt.Sprintf(`mutation login($data: LoginInput!) { login(params: $data) { %s } }`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{
 			"data": req,
 		},

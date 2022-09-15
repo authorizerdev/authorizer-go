@@ -11,7 +11,7 @@ type ForgotPasswordInput struct {
 	RedirectURI *string `json:"redirect_uri,omitempty"`
 }
 
-// ForgotPassword is method attached to authorizerClient
+// ForgotPassword is method attached to AuthorizerClient
 // It performs forgot_password mutation on authorizer instance.
 // It takes ForgotPasswordInput reference as parameter and returns Response or error
 // For implementation details check ForgotPasswordInputExample in examples/forgot_password.go
@@ -26,12 +26,7 @@ func (c *AuthorizerClient) ForgotPassword(req *ForgotPasswordInput) (*Response, 
 	}
 
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `
-		mutation forgotPassword($data: ForgotPasswordInput!) {
-			forgot_password(params: $data) {
-				message
-			}
-		}`,
+		Query: `mutation forgotPassword($data: ForgotPasswordInput!) { forgot_password(params: $data) { message } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},

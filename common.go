@@ -4,41 +4,13 @@ import "fmt"
 
 const (
 	// UserFragment defines graphql fragment for all the user attributes
-	UserFragment = `
-		id
-		email
-		email_verified
-		given_name
-		family_name
-		middle_name
-		nickname
-		preferred_username
-		picture
-		signup_methods
-		gender
-		birthdate
-		phone_number
-		phone_number_verified
-		roles
-		created_at
-		updated_at
-		is_multi_factor_auth_enabled
+	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled
 	`
 )
 
 // AuthTokenResponseFragment defines graphql response for auth token type,
 // which is common across various authorizer operations
-var AuthTokenResponseFragment = fmt.Sprintf(`
-		message
-		access_token
-		expires_in
-		refresh_token
-		id_token
-		should_show_otp_screen
-		user {
-			%s
-		}`, UserFragment,
-)
+var AuthTokenResponseFragment = fmt.Sprintf(`message access_token expires_in refresh_token id_token should_show_otp_screen user { 	%s }`, UserFragment)
 
 // User defines attributes for user instance
 type User struct {

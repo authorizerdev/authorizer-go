@@ -4,5 +4,6 @@ import "authorizer-go/examples"
 
 func main() {
 	// examples.LoginExample()
-	examples.ForgotPasswordInputExample()
+	// examples.ForgotPasswordInputExample()
+	examples.GetMetaDataExample()
 }
