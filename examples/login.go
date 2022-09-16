@@ -1,8 +1,9 @@
 package examples
 
 import (
-	"authorizer-go"
 	"fmt"
+
+	"github.com/authorizerdev/authorizer-go"
 )
 
 // LoginExample demonstrates how to use Login function of authorizer sdk
@@ -12,7 +13,7 @@ func LoginExample() {
 		panic(err)
 	}
 
-	res, err := c.Login(&authorizer.LoginRequest{
+	res, err := c.Login(&authorizer.LoginInput{
 		Email:    "test@yopmail.com",
 		Password: "Abc@123",
 	})

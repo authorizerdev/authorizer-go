@@ -6,8 +6,8 @@ import (
 	"github.com/authorizerdev/authorizer-go"
 )
 
-// GetProfileExample demonstrates how to use GetProfile function of authorizer sdk
-func GetProfileExample() {
+// LogoutExample demonstrates how to use Logout function of authorizer sdk
+func LogoutExample() {
 	c, err := authorizer.NewAuthorizerClient(ClientID, AuthorizerURL, "", nil)
 	if err != nil {
 		panic(err)
@@ -21,12 +21,12 @@ func GetProfileExample() {
 		panic(err)
 	}
 
-	res, err := c.GetProfile(map[string]string{
+	res, err := c.Logout(map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(res.Email)
+	fmt.Println(res.Message)
 }

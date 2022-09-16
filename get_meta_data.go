@@ -21,9 +21,9 @@ type MetaDataResponse struct {
 	IsStrongPasswordEnabled      bool   `json:"is_strong_password_enabled"`
 }
 
-// GetMetaData is method attached to AuthorizerClient
+// GetMetaData is method attached to AuthorizerClient.
 // It performs meta query on authorizer instance.
-// It returns MetaResponse reference or error
+// It returns MetaResponse reference or error.
 // For implementation details check GetMetadataExample examples/get_meta_data.go
 func (c *AuthorizerClient) GetMetaData() (*MetaDataResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{

@@ -3,6 +3,12 @@ package authorizer
 import "fmt"
 
 const (
+	// GrantTypeAuthorizationCode is used for authorization_code grant type
+	GrantTypeAuthorizationCode = "authorization_code"
+
+	// GrantTypeRefreshToken is used for refresh_token grant type
+	GrantTypeRefreshToken = "refresh_token"
+
 	// UserFragment defines graphql fragment for all the user attributes
 	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled
 	`

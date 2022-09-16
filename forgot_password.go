@@ -11,9 +11,9 @@ type ForgotPasswordInput struct {
 	RedirectURI *string `json:"redirect_uri,omitempty"`
 }
 
-// ForgotPassword is method attached to AuthorizerClient
+// ForgotPassword is method attached to AuthorizerClient.
 // It performs forgot_password mutation on authorizer instance.
-// It takes ForgotPasswordInput reference as parameter and returns Response or error
+// It takes ForgotPasswordInput reference as parameter and returns Response reference or error.
 // For implementation details check ForgotPasswordInputExample in examples/forgot_password.go
 func (c *AuthorizerClient) ForgotPassword(req *ForgotPasswordInput) (*Response, error) {
 	if req.State == nil || StringValue(req.State) == "" {
@@ -21,7 +21,7 @@ func (c *AuthorizerClient) ForgotPassword(req *ForgotPasswordInput) (*Response, 
 		req.State = NewStringRef(EncodeB64(CreateRandomString()))
 	}
 
-	if req.RedirectURI == nil || *req.RedirectURI == "" {
+	if req.RedirectURI == nil || StringValue(req.RedirectURI) == "" {
 		req.RedirectURI = NewStringRef(c.RedirectURL)
 	}
 

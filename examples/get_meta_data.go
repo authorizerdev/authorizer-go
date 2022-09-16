@@ -1,8 +1,9 @@
 package examples
 
 import (
-	"authorizer-go"
 	"fmt"
+
+	"github.com/authorizerdev/authorizer-go"
 )
 
 // GetMetaDataExample demonstrates how to use GetMetaData function of authorizer sdk

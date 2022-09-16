@@ -1,10 +1,13 @@
 package main
 
-import "authorizer-go/examples"
+import "github.com/authorizerdev/authorizer-go/examples"
 
 func main() {
-	examples.LoginExample()
+	// examples.LoginExample()
 	// examples.ForgotPasswordInputExample()
 	// examples.GetMetaDataExample()
-	examples.GetProfileExample()
+	// examples.GetProfileExample()
+	// examples.GetSessionExample()
+	// examples.LogoutExample()
+	examples.MagicLinkLoginExample()
 }

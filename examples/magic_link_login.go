@@ -6,14 +6,14 @@ import (
 	"github.com/authorizerdev/authorizer-go"
 )
 
-// ForgotPasswordInputExample demonstrates how to use ForgotPassword function of authorizer skd
-func ForgotPasswordInputExample() {
+// MagicLinkLoginExample demonstrates how to use MagicLinkLogin function of authorizer sdk
+func MagicLinkLoginExample() {
 	c, err := authorizer.NewAuthorizerClient(ClientID, AuthorizerURL, "", nil)
 	if err != nil {
 		panic(err)
 	}
 
-	res, err := c.ForgotPassword(&authorizer.ForgotPasswordInput{
+	res, err := c.MagicLinkLogin(&authorizer.MagicLinkLoginInput{
 		Email: "test@yopmail.com",
 	})
 	if err != nil {

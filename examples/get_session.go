@@ -6,8 +6,8 @@ import (
 	"github.com/authorizerdev/authorizer-go"
 )
 
-// GetProfileExample demonstrates how to use GetProfile function of authorizer sdk
-func GetProfileExample() {
+// GetSessionExample demonstrates how to use GetSession function of authorizer sdk
+func GetSessionExample() {
 	c, err := authorizer.NewAuthorizerClient(ClientID, AuthorizerURL, "", nil)
 	if err != nil {
 		panic(err)
@@ -21,12 +21,14 @@ func GetProfileExample() {
 		panic(err)
 	}
 
-	res, err := c.GetProfile(map[string]string{
+	res, err := c.GetSession(&authorizer.SessionQueryInput{
+		Roles: []*string{authorizer.NewStringRef("test")},
+	}, map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(res.Email)
+	fmt.Println(authorizer.StringValue(res.Message))
 }

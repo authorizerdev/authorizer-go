@@ -6,15 +6,15 @@ import (
 	"github.com/authorizerdev/authorizer-go"
 )
 
-// ForgotPasswordInputExample demonstrates how to use ForgotPassword function of authorizer skd
-func ForgotPasswordInputExample() {
+// RevokeTokenExample demonstrates how to use RevokeToken function of authorizer sdk
+func RevokeTokenExample() {
 	c, err := authorizer.NewAuthorizerClient(ClientID, AuthorizerURL, "", nil)
 	if err != nil {
 		panic(err)
 	}
 
-	res, err := c.ForgotPassword(&authorizer.ForgotPasswordInput{
-		Email: "test@yopmail.com",
+	res, err := c.RevokeToken(&authorizer.RevokeTokenInput{
+		RefreshToken: "example refresh token",
 	})
 	if err != nil {
 		panic(err)
