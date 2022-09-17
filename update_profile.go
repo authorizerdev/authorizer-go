@@ -25,7 +25,7 @@ type UpdateProfileInput struct {
 }
 
 // UpdateProfile is method attached to AuthorizerClient.
-// It performs profile query on authorizer instance.
+// It performs update_profile mutation on authorizer instance.
 // It returns User reference or error.
 // For implementation details check UpdateProfileExample examples/update_profile.go
 func (c *AuthorizerClient) UpdateProfile(req *UpdateProfileInput, headers map[string]string) (*Response, error) {
