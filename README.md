@@ -24,7 +24,7 @@ go get github.com/authorizerdev/authorizer-go
 
 ### Step 2: Initialize authorizer client
 
-**Required Parameters**
+**Parameters**
 
 | Key             | Type                | Required | Description |
 | --------------- | ------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------- |
