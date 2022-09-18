@@ -17,4 +17,4 @@ jobs:
           badge-godoc: "true"
           badge-goreadme: "true"
           # Optional: enable goreadme to comment on PRs.
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          # github-token: "${{ secrets.GITHUB_TOKEN }}"
