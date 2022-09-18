@@ -26,14 +26,14 @@ go get github.com/authorizerdev/authorizer-go
 
 **Required Parameters**
 
-| Key             | Type | Required | Description                                                                                                     |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `clientID`      | `string` | `true` | Your unique client identifier obtained from authorizer dashboard                                                |
-| `authorizerURL` | `string` |`true` |Authorizer server URL                                                                                           |
-| `redirectURL`   | `string`| `false` |Default URL to which you would like to redirect the user in case of successful signup / login / forgot password |
-| `extraHeaders` | `map[string]string` | `false` | set of headers that you would like to pass with each request |
+| Key             | Type                | Required | Description |
+| --------------- | ------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `clientID`      | `string`            | `true`               | Your unique client identifier obtained from authorizer dashboard                                                |
+| `authorizerURL` | `string`            | `true`               | Authorizer server URL                                                                                           |
+| `redirectURL`   | `string`            | `false`              | Default URL to which you would like to redirect the user in case of successful signup / login / forgot password |
+| `extraHeaders`  | `map[string]string` | `false`              | set of headers that you would like to pass with each request                                                    |
 
-__Example__
+**Example**
 
 ```go
 defaultHeaders := map[string]string{}
@@ -46,7 +46,7 @@ if err != nil {
 
 ### Step 3: Access all the SDK methods using authorizer client instance, initialized on step 2
 
-__Example__
+**Example**
 
 ```go
 response, err := authorizerClient.Login(&authorizer.LoginInput{
