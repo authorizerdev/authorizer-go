@@ -26,16 +26,19 @@ go get github.com/authorizerdev/authorizer-go
 
 **Required Parameters**
 
-| Key             | Description                                                                                                     |
+| Key             | Type | Required | Description                                                                                                     |
 | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| `clientID`      | Your unique client identifier obtained from authorizer dashboard                                                |
-| `authorizerURL` | Authorizer server URL                                                                                           |
-| `redirectURL`   | Default URL to which you would like to redirect the user in case of successful signup / login / forgot password |
+| `clientID`      | `string` | `true` | Your unique client identifier obtained from authorizer dashboard                                                |
+| `authorizerURL` | `string` |`true` |Authorizer server URL                                                                                           |
+| `redirectURL`   | `string`| `false` |Default URL to which you would like to redirect the user in case of successful signup / login / forgot password |
+| `extraHeaders` | `map[string]string` | `false` | set of headers that you would like to pass with each request |
 
 __Example__
 
 ```go
-authorizerClient, err := authorizer.NewAuthorizerClient("19ccbbe2-7750-4aac-9d71-e2c75fbf660a", "http://localhost:8080", "", nil)
+defaultHeaders := map[string]string{}
+
+authorizerClient, err := authorizer.NewAuthorizerClient("YOUR_CLIENT_ID", "YOUR_AUHTORIZER_URL", "OPTIONAL_REDIRECT_URL", defaultHeaders)
 if err != nil {
     panic(err)
 }
