@@ -134,7 +134,7 @@ func main() {
 
 **CURL command to test go-gin server created in example**
 
-Copy JWT ID token from above login response of authorizer and replace `JWT_TOKEN` below
+Copy JWT ID token from login response of authorizer `login` mutation / social media login and replace `JWT_TOKEN` below
 
 ```bash
 curl --location --request GET 'http://localhost:8090/ping' \
