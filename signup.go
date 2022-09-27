@@ -28,7 +28,7 @@ type SignUpInput struct {
 // It performs signup mutation on authorizer instance.
 // It takes SignUpInput reference as parameter and returns AuthTokenResponse reference or error.
 // For implementation details check SignUpExample examples/signup.go
-func (c *AuthorizerClient) SignUp(req *LoginInput) (*AuthTokenResponse, error) {
+func (c *AuthorizerClient) SignUp(req *SignUpInput) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
 		Query: fmt.Sprintf(`mutation signup($data: SignUpInput!) { signup(params: $data) { %s }}`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{

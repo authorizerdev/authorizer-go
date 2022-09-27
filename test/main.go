@@ -10,5 +10,6 @@ func main() {
 	// examples.GetSessionExample()
 	// examples.LogoutExample()
 	// examples.MagicLinkLoginExample()
-	examples.ValidateJWTTokenExample()
+	// examples.ValidateJWTTokenExample()
+	examples.SignUpExample()
 }
