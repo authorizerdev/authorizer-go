@@ -23,7 +23,8 @@ type ValidateJWTTokenInput struct {
 // ValidateJWTTokenResponse defines attributes for validate_jwt_token response
 
 type ValidateJWTTokenResponse struct {
-	IsValid bool `json:"is_valid"`
+	IsValid bool                   `json:"is_valid"`
+	Claims  map[string]interface{} `json:"claims"`
 }
 
 // ValidateJWTToken is method attached to AuthorizerClient.
@@ -32,7 +33,7 @@ type ValidateJWTTokenResponse struct {
 // For implementation details check ValidateJWTTokenExample examples/validate_jwt_token.go
 func (c *AuthorizerClient) ValidateJWTToken(req *ValidateJWTTokenInput) (*ValidateJWTTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `query validateJWTToken($data: ValidateJWTTokenInput!){validate_jwt_token(params: $data) { is_valid } }`,
+		Query: `query validateJWTToken($data: ValidateJWTTokenInput!){validate_jwt_token(params: $data) { is_valid claims } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},
