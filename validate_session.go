@@ -4,7 +4,7 @@ import "encoding/json"
 
 // ValidateSessionInput defines attributes for validate_session request
 type ValidateSessionInput struct {
-	Cookie string    `json:"token,omitempty"`
+	Cookie string    `json:"cookie,omitempty"`
 	Roles  []*string `json:"roles,omitempty"`
 }
 
