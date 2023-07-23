@@ -6,7 +6,8 @@ import (
 
 // ResendOTPInput defines attributes for resend_otp request
 type ResendOTPInput struct {
-	Email string `json:"email"`
+	Email       *string `json:"email"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 // ResendOTP is method attached to AuthorizerClient.

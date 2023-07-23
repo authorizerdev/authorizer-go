@@ -12,9 +12,9 @@ func ResendOTPExample() {
 	if err != nil {
 		panic(err)
 	}
-
+	email := "test@yopmail.com"
 	res, err := c.ResendOTP(&authorizer.ResendOTPInput{
-		Email: "test@yopmail.com",
+		Email: &email,
 	})
 	if err != nil {
 		panic(err)

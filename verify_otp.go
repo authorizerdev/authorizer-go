@@ -7,8 +7,9 @@ import (
 
 // VerifyOTPInput defines attributes for verify_otp request
 type VerifyOTPInput struct {
-	Email string `json:"email"`
-	OTP   string `json:"otp"`
+	Email       *string `json:"email"`
+	OTP         string  `json:"otp"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 // VerifyOTP is method attached to AuthorizerClient.

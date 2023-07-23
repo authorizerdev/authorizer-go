@@ -16,7 +16,7 @@ const (
 
 // AuthTokenResponseFragment defines graphql response for auth token type,
 // which is common across various authorizer operations
-var AuthTokenResponseFragment = fmt.Sprintf(`message access_token expires_in refresh_token id_token should_show_otp_screen user { 	%s }`, UserFragment)
+var AuthTokenResponseFragment = fmt.Sprintf(`message access_token expires_in refresh_token id_token should_show_email_otp_screen should_show_mobile_otp_screen user { 	%s }`, UserFragment)
 
 // User defines attributes for user instance
 type User struct {
@@ -43,13 +43,14 @@ type User struct {
 // AuthTokenResponse defines attribute for auth token response,
 // which is common across various authorizer operations
 type AuthTokenResponse struct {
-	Message      *string `json:"message,omitempty"`
-	AccessToken  *string `json:"access_token,omitempty"`
-	ExpiresIn    *int64  `json:"expires_in,omitempty"`
-	IdToken      *string `json:"id_token,omitempty"`
-	RefreshToken *string `json:"refresh_token,omitempty"`
-	OtpSent      *bool   `json:"should_show_otp_screen"`
-	User         *User   `json:"user,omitempty"`
+	Message                   *string `json:"message,omitempty"`
+	AccessToken               *string `json:"access_token,omitempty"`
+	ExpiresIn                 *int64  `json:"expires_in,omitempty"`
+	IdToken                   *string `json:"id_token,omitempty"`
+	RefreshToken              *string `json:"refresh_token,omitempty"`
+	ShouldShowEmailOtpScreen  *bool   `json:"should_show_email_otp_screen"`
+	ShouldShowMobileOtpScreen *bool   `json:"should_show_mobile_otp_screen"`
+	User                      *User   `json:"user,omitempty"`
 }
 
 // Response defines attribute for Response graphql type

@@ -12,10 +12,10 @@ func VerifyOTPExample() {
 	if err != nil {
 		panic(err)
 	}
-
+	email := "test@yopmail.com"
 	res, err := c.VerifyOTP(&authorizer.VerifyOTPInput{
 		OTP:   "test",
-		Email: "test@yopmail.com",
+		Email: &email,
 	})
 	if err != nil {
 		panic(err)
