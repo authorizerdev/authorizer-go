@@ -11,7 +11,8 @@ type ValidateSessionInput struct {
 // ValidateSessionResponse defines attributes for validate_session response
 
 type ValidateSessionResponse struct {
-	IsValid bool `json:"is_valid"`
+	IsValid bool  `json:"is_valid"`
+	User    *User `json:"user,omitempty"`
 }
 
 // ValidateSession is method attached to AuthorizerClient.
@@ -20,7 +21,7 @@ type ValidateSessionResponse struct {
 // For implementation details check ValidateSessionExample examples/validate_session.go
 func (c *AuthorizerClient) ValidateSession(req *ValidateSessionInput) (*ValidateSessionResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `query validateSession($data: ValidateSessionInput!){validate_session(params: $data) { is_valid } }`,
+		Query: `query validateSession($data: ValidateSessionInput!){validate_session(params: $data) { is_valid user } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},
