@@ -14,7 +14,7 @@ func DeactivateAccountExample() {
 	}
 
 	loginRes, err := c.Login(&authorizer.LoginInput{
-		Email:    "test@yopmail.com",
+		Email:    &TestEmail,
 		Password: "Abc@123",
 	})
 	if err != nil {

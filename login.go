@@ -7,10 +7,11 @@ import (
 
 // LoginInput defines attributes for login request
 type LoginInput struct {
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
-	Roles    []*string `json:"roles,omitempty"`
-	Scope    []*string `json:"scope,omitempty"`
+	Email       *string   `json:"email,omitempty"`
+	PhoneNumber *string   `json:"phone_number,omitempty"`
+	Password    string    `json:"password"`
+	Roles       []*string `json:"roles,omitempty"`
+	Scope       []*string `json:"scope,omitempty"`
 }
 
 // Login is method attached to AuthorizerClient.

@@ -6,3 +6,8 @@ const (
 	// Authorizer server endpoint
 	AuthorizerURL = "http://localhost:8080"
 )
+
+var (
+	// Test email
+	TestEmail = "test@yopmail.com"
+)

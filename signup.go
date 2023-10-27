@@ -7,7 +7,7 @@ import (
 
 // SignUpInput defines attributes for signup request
 type SignUpInput struct {
-	Email                    string                 `json:"email"`
+	Email                    *string                `json:"email,omitempty"`
 	Password                 string                 `json:"password"`
 	ConfirmPassword          string                 `json:"confirm_password"`
 	GivenName                *string                `json:"given_name,omitempty"`

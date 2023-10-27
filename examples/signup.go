@@ -2,7 +2,6 @@ package examples
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/authorizerdev/authorizer-go"
 )
@@ -15,7 +14,7 @@ func SignUpExample() {
 	}
 
 	res, err := c.SignUp(&authorizer.SignUpInput{
-		Email:           fmt.Sprintf("test.%d@yopmail.com", time.Now().Unix()),
+		Email:           &TestEmail,
 		Password:        "Abc@123",
 		ConfirmPassword: "Abc@123",
 	})
