@@ -7,22 +7,22 @@ import (
 
 // SignUpInput defines attributes for signup request
 type SignUpInput struct {
-	Email                    string    `json:"email"`
-	Password                 string    `json:"password"`
-	ConfirmPassword          string    `json:"confirm_password"`
-	GivenName                *string   `json:"given_name,omitempty"`
-	FamilyName               *string   `json:"family_name,omitempty"`
-	MiddleName               *string   `json:"middle_name,omitempty"`
-	NickName                 *string   `json:"nick_name,omitempty"`
-	Picture                  *string   `json:"picture,omitempty"`
-	Gender                   *string   `json:"gender,omitempty"`
-	BirthDate                *string   `json:"birthdate,omitempty"`
-	PhoneNumber              *string   `json:"phone_number,omitempty"`
-	Roles                    []*string `json:"roles,omitempty"`
-	Scope                    []*string `json:"scope,omitempty"`
-	RedirectURI              *string   `json:"redirect_uri,omitempty"`
-	IsMultiFactorAuthEnabled *bool     `json:"is_multi_factor_auth_enabled,omitempty"`
-	AppData                  *string   `json:"app_data,omitempty"`
+	Email                    string                 `json:"email"`
+	Password                 string                 `json:"password"`
+	ConfirmPassword          string                 `json:"confirm_password"`
+	GivenName                *string                `json:"given_name,omitempty"`
+	FamilyName               *string                `json:"family_name,omitempty"`
+	MiddleName               *string                `json:"middle_name,omitempty"`
+	NickName                 *string                `json:"nick_name,omitempty"`
+	Picture                  *string                `json:"picture,omitempty"`
+	Gender                   *string                `json:"gender,omitempty"`
+	BirthDate                *string                `json:"birthdate,omitempty"`
+	PhoneNumber              *string                `json:"phone_number,omitempty"`
+	Roles                    []*string              `json:"roles,omitempty"`
+	Scope                    []*string              `json:"scope,omitempty"`
+	RedirectURI              *string                `json:"redirect_uri,omitempty"`
+	IsMultiFactorAuthEnabled *bool                  `json:"is_multi_factor_auth_enabled,omitempty"`
+	AppData                  map[string]interface{} `json:"app_data,omitempty"`
 }
 
 // SignUp is method attached to AuthorizerClient.
