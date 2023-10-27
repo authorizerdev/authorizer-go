@@ -22,6 +22,7 @@ type UpdateProfileInput struct {
 	Scope                    []*string `json:"scope,omitempty"`
 	RedirectURI              *string   `json:"redirect_uri,omitempty"`
 	IsMultiFactorAuthEnabled *bool     `json:"is_multi_factor_auth_enabled,omitempty"`
+	AppData                  *string   `json:"app_data,omitempty"`
 }
 
 // UpdateProfile is method attached to AuthorizerClient.
