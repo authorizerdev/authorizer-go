@@ -39,6 +39,9 @@ func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeade
 		headers["x-authorizer-url"] = authorizerURL
 	}
 
+	// Add clientID to headers
+	headers["x-authorizer-client-id"] = clientID
+
 	return &AuthorizerClient{
 		RedirectURL:   strings.TrimSuffix(redirectURL, "/"),
 		AuthorizerURL: strings.TrimSuffix(authorizerURL, "/"),

@@ -11,7 +11,6 @@ import (
 // RevokeTokenInput defines attributes for /oauth/revoke request
 type RevokeTokenInput struct {
 	RefreshToken string `json:"refresh_token"`
-	ClientID     string `json:"client_id"`
 }
 
 // RevokeToken is method attached to AuthorizerClient.
@@ -22,13 +21,11 @@ func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error)
 	if req.RefreshToken == "" {
 		return nil, errors.New("refresh_token is required")
 	}
-
-	if req.ClientID == "" {
-		req.ClientID = c.ClientID
-	}
-
 	// Marshal it into JSON prior to requesting
-	jsonReq, err := json.Marshal(req)
+	jsonReq, err := json.Marshal(map[string]string{
+		"refresh_token": req.RefreshToken,
+		"client_id":     c.ClientID,
+	})
 	if err != nil {
 		return nil, err
 	}
