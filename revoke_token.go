@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -49,7 +49,7 @@ func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error)
 	// Hence defer close. It will automatically take care of it.
 	defer httpRes.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(httpRes.Body)
+	bodyBytes, err := io.ReadAll(httpRes.Body)
 	if err != nil {
 		return nil, err
 	}
