@@ -16,7 +16,6 @@ type RevokeTokenInput struct {
 // RevokeToken is method attached to AuthorizerClient.
 // It performs /oauth/revoke api call on authorizer instance.
 // It takes RevokeTokenInput reference as parameter and returns Response reference or error.
-// For implementation details check RevokeTokenExample examples/revoke_token.go
 func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error) {
 	if req.RefreshToken == "" {
 		return nil, errors.New("refresh_token is required")

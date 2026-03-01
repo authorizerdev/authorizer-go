@@ -45,10 +45,8 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 	}
 
 	// set the headers for this request
-	if headers != nil {
-		for key, val := range headers {
-			httpReq.Header.Add(key, val)
-		}
+	for key, val := range headers {
+		httpReq.Header.Add(key, val)
 	}
 
 	res, err := client.Do(httpReq)

@@ -13,7 +13,7 @@ func MagicLinkLoginExample() {
 		panic(err)
 	}
 
-	res, err := c.MagicLinkLogin(&authorizer.MagicLinkLoginInput{
+	res, err := c.MagicLinkLogin(&authorizer.MagicLinkLoginRequest{
 		Email: "test@yopmail.com",
 	})
 	if err != nil {

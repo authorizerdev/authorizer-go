@@ -4,20 +4,24 @@ import (
 	"encoding/json"
 )
 
-// ResetPasswordInput defines attributes for reset_password request
-type ResetPasswordInput struct {
-	Token           string `json:"token"`
-	Password        string `json:"password"`
-	ConfirmPassword string `json:"confirm_password"`
+// ResetPasswordRequest defines attributes for reset_password request
+type ResetPasswordRequest struct {
+	Token           *string `json:"token,omitempty"`
+	Password        string  `json:"password"`
+	ConfirmPassword string  `json:"confirm_password"`
+	OTP             *string `json:"otp,omitempty"`
+	PhoneNumber     *string `json:"phone_number,omitempty"`
 }
 
+// ResetPasswordInput is deprecated: Use ResetPasswordRequest instead
+type ResetPasswordInput = ResetPasswordRequest
+
 // ResetPassword is method attached to AuthorizerClient.
-// It performs resend_otp mutation on authorizer instance.
-// It takes ResetPasswordInput reference as parameter and returns Response reference or error.
-// For implementation details check ResetPasswordExample examples/resent_password.go
-func (c *AuthorizerClient) ResetPassword(req *ResetPasswordInput) (*Response, error) {
+// It performs reset_password mutation on authorizer instance.
+// It takes ResetPasswordRequest reference as parameter and returns Response reference or error.
+func (c *AuthorizerClient) ResetPassword(req *ResetPasswordRequest) (*Response, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `mutation resetPassword($data: ResetPasswordInput!) {	reset_password(params: $data) { message } }`,
+		Query: `mutation resetPassword($data: ResetPasswordRequest!) {	reset_password(params: $data) { message } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},

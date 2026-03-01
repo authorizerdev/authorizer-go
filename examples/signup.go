@@ -13,7 +13,7 @@ func SignUpExample() {
 		panic(err)
 	}
 
-	res, err := c.SignUp(&authorizer.SignUpInput{
+	res, err := c.SignUp(&authorizer.SignUpRequest{
 		Email:           &TestEmail,
 		Password:        "Abc@123",
 		ConfirmPassword: "Abc@123",

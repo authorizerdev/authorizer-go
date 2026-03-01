@@ -13,7 +13,7 @@ func VerifyEmailExample() {
 		panic(err)
 	}
 
-	res, err := c.VerifyEmail(&authorizer.VerifyEmailInput{
+	res, err := c.VerifyEmail(&authorizer.VerifyEmailRequest{
 		Token: "token sent via email",
 	})
 	if err != nil {

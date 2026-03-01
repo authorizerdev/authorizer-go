@@ -5,18 +5,21 @@ import (
 	"fmt"
 )
 
-// VerifyEmailInput defines attributes for verify_email request
-type VerifyEmailInput struct {
-	Token string `json:"token"`
+// VerifyEmailRequest defines attributes for verify_email request
+type VerifyEmailRequest struct {
+	Token string  `json:"token"`
+	State *string `json:"state,omitempty"`
 }
+
+// VerifyEmailInput is deprecated: Use VerifyEmailRequest instead
+type VerifyEmailInput = VerifyEmailRequest
 
 // VerifyEmail is method attached to AuthorizerClient.
 // It performs verify_email mutation on authorizer instance.
 // It returns AuthTokenResponse reference or error.
-// For implementation details check VerifyEmailExample examples/verify_email.go
-func (c *AuthorizerClient) VerifyEmail(req *VerifyEmailInput) (*AuthTokenResponse, error) {
+func (c *AuthorizerClient) VerifyEmail(req *VerifyEmailRequest) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: fmt.Sprintf(`mutation verifyEmail($data: VerifyEmailInput!) { verify_email(params: $data) { %s}}`, AuthTokenResponseFragment),
+		Query: fmt.Sprintf(`mutation verifyEmail($data: VerifyEmailRequest!) { verify_email(params: $data) { %s}}`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{
 			"data": req,
 		},

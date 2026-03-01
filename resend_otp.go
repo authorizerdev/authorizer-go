@@ -4,17 +4,20 @@ import (
 	"encoding/json"
 )
 
-// ResendOTPInput defines attributes for resend_otp request
-type ResendOTPInput struct {
+// ResendOTPRequest defines attributes for resend_otp request
+type ResendOTPRequest struct {
 	Email       *string `json:"email"`
 	PhoneNumber *string `json:"phone_number"`
+	State       *string `json:"state,omitempty"`
 }
+
+// ResendOTPInput is deprecated: Use ResendOTPRequest instead
+type ResendOTPInput = ResendOTPRequest
 
 // ResendOTP is method attached to AuthorizerClient.
 // It performs resend_otp mutation on authorizer instance.
-// It takes ResendOTPInput reference as parameter and returns Response reference or error.
-// For implementation details check ResendOTPExample examples/resend_otp.go
-func (c *AuthorizerClient) ResendOTP(req *ResendOTPInput) (*Response, error) {
+// It takes ResendOTPRequest reference as parameter and returns Response reference or error.
+func (c *AuthorizerClient) ResendOTP(req *ResendOTPRequest) (*Response, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
 		Query: `mutation resendOtp($data: ResendOTPRequest!) { resend_otp(params: $data) { message }}`,
 		Variables: map[string]interface{}{

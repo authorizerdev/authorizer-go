@@ -10,13 +10,13 @@ const (
 	GrantTypeRefreshToken = "refresh_token"
 
 	// UserFragment defines graphql fragment for all the user attributes
-	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data
+	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data revoked_timestamp
 	`
 )
 
 // AuthTokenResponseFragment defines graphql response for auth token type,
 // which is common across various authorizer operations
-var AuthTokenResponseFragment = fmt.Sprintf(`message access_token expires_in refresh_token id_token should_show_email_otp_screen should_show_mobile_otp_screen user { 	%s }`, UserFragment)
+var AuthTokenResponseFragment = fmt.Sprintf(`message access_token expires_in refresh_token id_token should_show_email_otp_screen should_show_mobile_otp_screen should_show_totp_screen authenticator_scanner_image authenticator_secret authenticator_recovery_codes user { 	%s }`, UserFragment)
 
 // User defines attributes for user instance
 type User struct {
@@ -39,23 +39,34 @@ type User struct {
 	UpdatedAt                int64                  `json:"updated_at"`
 	IsMultiFactorAuthEnabled *bool                  `json:"is_multi_factor_auth_enabled"`
 	AppData                  map[string]interface{} `json:"app_data,omitempty"`
+	RevokedTimestamp         *int64                 `json:"revoked_timestamp"`
 }
 
 // AuthTokenResponse defines attribute for auth token response,
 // which is common across various authorizer operations
 type AuthTokenResponse struct {
-	Message                   *string `json:"message,omitempty"`
-	AccessToken               *string `json:"access_token,omitempty"`
-	ExpiresIn                 *int64  `json:"expires_in,omitempty"`
-	IdToken                   *string `json:"id_token,omitempty"`
-	RefreshToken              *string `json:"refresh_token,omitempty"`
-	ShouldShowEmailOtpScreen  *bool   `json:"should_show_email_otp_screen"`
-	ShouldShowMobileOtpScreen *bool   `json:"should_show_mobile_otp_screen"`
-	User                      *User   `json:"user,omitempty"`
+	Message                    *string   `json:"message,omitempty"`
+	AccessToken                *string   `json:"access_token,omitempty"`
+	ExpiresIn                  *int64    `json:"expires_in,omitempty"`
+	IdToken                    *string   `json:"id_token,omitempty"`
+	RefreshToken               *string   `json:"refresh_token,omitempty"`
+	ShouldShowEmailOtpScreen   *bool     `json:"should_show_email_otp_screen"`
+	ShouldShowMobileOtpScreen  *bool     `json:"should_show_mobile_otp_screen"`
+	ShouldShowTotpScreen       *bool     `json:"should_show_totp_screen"`
+	AuthenticatorScannerImage  *string   `json:"authenticator_scanner_image"`
+	AuthenticatorSecret        *string   `json:"authenticator_secret"`
+	AuthenticatorRecoveryCodes []*string `json:"authenticator_recovery_codes"`
+	User                       *User     `json:"user,omitempty"`
 }
 
 // Response defines attribute for Response graphql type
 // it is common across various authorizer operations
 type Response struct {
 	Message string `json:"message"`
+}
+
+// ForgotPasswordResponse defines attribute for forgot_password response
+type ForgotPasswordResponse struct {
+	Message                   string `json:"message"`
+	ShouldShowMobileOtpScreen *bool  `json:"should_show_mobile_otp_screen"`
 }

@@ -13,7 +13,7 @@ func GetSessionExample() {
 		panic(err)
 	}
 
-	loginRes, err := c.Login(&authorizer.LoginInput{
+	loginRes, err := c.Login(&authorizer.LoginRequest{
 		Email:    &TestEmail,
 		Password: "Abc@123",
 	})
@@ -21,7 +21,7 @@ func GetSessionExample() {
 		panic(err)
 	}
 
-	res, err := c.GetSession(&authorizer.SessionQueryInput{
+	res, err := c.GetSession(&authorizer.SessionQueryRequest{
 		Roles: []*string{authorizer.NewStringRef("test")},
 	}, map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),

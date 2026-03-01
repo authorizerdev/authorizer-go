@@ -12,14 +12,14 @@ func ValidateSessionExample() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = c.Login(&authorizer.LoginInput{
+	_, err = c.Login(&authorizer.LoginRequest{
 		Email:    &TestEmail,
 		Password: "Abc@123",
 	})
 	if err != nil {
 		panic(err)
 	}
-	res, err := c.ValidateSession(&authorizer.ValidateSessionInput{
+	res, err := c.ValidateSession(&authorizer.ValidateSessionRequest{
 		Cookie: "", // TODO set cookie here
 	})
 	if err != nil {

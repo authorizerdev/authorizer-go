@@ -13,7 +13,7 @@ func UpdateProfileExample() {
 		panic(err)
 	}
 
-	loginRes, err := c.Login(&authorizer.LoginInput{
+	loginRes, err := c.Login(&authorizer.LoginRequest{
 		Email:    &TestEmail,
 		Password: "Abc@123",
 	})
@@ -21,7 +21,7 @@ func UpdateProfileExample() {
 		panic(err)
 	}
 
-	res, err := c.UpdateProfile(&authorizer.UpdateProfileInput{
+	res, err := c.UpdateProfile(&authorizer.UpdateProfileRequest{
 		FamilyName: authorizer.NewStringRef("test"),
 	}, map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
