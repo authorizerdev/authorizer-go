@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 )
 
-// MagicLinkLoginInput defines attributes for magic link login request
-type MagicLinkLoginInput struct {
+// MagicLinkLoginRequest defines attributes for magic link login request
+type MagicLinkLoginRequest struct {
 	Email       string    `json:"email"`
 	Roles       []*string `json:"roles,omitempty"`
 	Scope       []*string `json:"scope,omitempty"`
@@ -13,11 +13,13 @@ type MagicLinkLoginInput struct {
 	RedirectURI *string   `json:"redirect_uri"`
 }
 
-// MagicLinkLoginInput is method attached to AuthorizerClient.
+// MagicLinkLoginInput is deprecated: Use MagicLinkLoginRequest instead
+type MagicLinkLoginInput = MagicLinkLoginRequest
+
+// MagicLinkLogin is method attached to AuthorizerClient.
 // It performs magic_link_login mutation on authorizer instance.
-// It takes MagicLinkLoginInput reference as parameter and returns AuthTokenResponse reference or error.
-// For implementation details check MagicLinkLoginExample examples/magic_link_login.go
-func (c *AuthorizerClient) MagicLinkLogin(req *MagicLinkLoginInput) (*Response, error) {
+// It takes MagicLinkLoginRequest reference as parameter and returns Response reference or error.
+func (c *AuthorizerClient) MagicLinkLogin(req *MagicLinkLoginRequest) (*Response, error) {
 	if req.State == nil || StringValue(req.State) == "" {
 		// generate random state
 		req.State = NewStringRef(EncodeB64(CreateRandomString()))
@@ -28,7 +30,7 @@ func (c *AuthorizerClient) MagicLinkLogin(req *MagicLinkLoginInput) (*Response, 
 	}
 
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `mutation magicLinkLogin($data: MagicLinkLoginInput!) { magic_link_login(params: $data) { message }}`,
+		Query: `mutation magicLinkLogin($data: MagicLinkLoginRequest!) { magic_link_login(params: $data) { message }}`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},

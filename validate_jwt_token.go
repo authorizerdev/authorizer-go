@@ -13,15 +13,17 @@ const (
 	TokenTypeRefreshToken TokenType = "refresh_token"
 )
 
-// ValidateJWTTokenInput defines attributes for validate_jwt_token request
-type ValidateJWTTokenInput struct {
+// ValidateJWTTokenRequest defines attributes for validate_jwt_token request
+type ValidateJWTTokenRequest struct {
 	TokenType TokenType `json:"token_type"`
 	Token     string    `json:"token"`
 	Roles     []*string `json:"roles,omitempty"`
 }
 
-// ValidateJWTTokenResponse defines attributes for validate_jwt_token response
+// ValidateJWTTokenInput is deprecated: Use ValidateJWTTokenRequest instead
+type ValidateJWTTokenInput = ValidateJWTTokenRequest
 
+// ValidateJWTTokenResponse defines attributes for validate_jwt_token response
 type ValidateJWTTokenResponse struct {
 	IsValid bool                   `json:"is_valid"`
 	Claims  map[string]interface{} `json:"claims"`
@@ -30,10 +32,9 @@ type ValidateJWTTokenResponse struct {
 // ValidateJWTToken is method attached to AuthorizerClient.
 // It performs validate_jwt_token query on authorizer instance.
 // It returns ValidateJWTTokenResponse reference or error.
-// For implementation details check ValidateJWTTokenExample examples/validate_jwt_token.go
-func (c *AuthorizerClient) ValidateJWTToken(req *ValidateJWTTokenInput) (*ValidateJWTTokenResponse, error) {
+func (c *AuthorizerClient) ValidateJWTToken(req *ValidateJWTTokenRequest) (*ValidateJWTTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `query validateJWTToken($data: ValidateJWTTokenInput!){validate_jwt_token(params: $data) { is_valid claims } }`,
+		Query: `query validateJWTToken($data: ValidateJWTTokenRequest!){validate_jwt_token(params: $data) { is_valid claims } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},

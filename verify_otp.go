@@ -5,18 +5,22 @@ import (
 	"fmt"
 )
 
-// VerifyOTPInput defines attributes for verify_otp request
-type VerifyOTPInput struct {
+// VerifyOTPRequest defines attributes for verify_otp request
+type VerifyOTPRequest struct {
 	Email       *string `json:"email"`
 	OTP         string  `json:"otp"`
 	PhoneNumber *string `json:"phone_number"`
+	IsTotp      *bool   `json:"is_totp,omitempty"`
+	State       *string `json:"state,omitempty"`
 }
+
+// VerifyOTPInput is deprecated: Use VerifyOTPRequest instead
+type VerifyOTPInput = VerifyOTPRequest
 
 // VerifyOTP is method attached to AuthorizerClient.
 // It performs verify_otp mutation on authorizer instance.
 // It returns AuthTokenResponse reference or error.
-// For implementation details check VerifyOTPExample examples/verify_otp.go
-func (c *AuthorizerClient) VerifyOTP(req *VerifyOTPInput) (*AuthTokenResponse, error) {
+func (c *AuthorizerClient) VerifyOTP(req *VerifyOTPRequest) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
 		Query: fmt.Sprintf(`mutation verifyOtp($data: VerifyOTPRequest!) { verify_otp(params: $data) { %s }}`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{

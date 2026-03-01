@@ -5,20 +5,21 @@ import (
 	"fmt"
 )
 
-// SessionQueryInput defines attributes for session query request
-type SessionQueryInput struct {
+// SessionQueryRequest defines attributes for session query request
+type SessionQueryRequest struct {
 	Roles []*string `json:"roles"`
+	Scope []*string `json:"scope,omitempty"`
 }
 
-// TODO: session currently works with cookie only use this function once the flow is fixed in authorizer core.
+// SessionQueryInput is deprecated: Use SessionQueryRequest instead
+type SessionQueryInput = SessionQueryRequest
 
 // GetSession is method attached to AuthorizerClient.
 // It performs session query on authorizer instance.
-// It returns User reference or error.
-// For implementation details check GetSessionExample examples/get_session.go
-func (c *AuthorizerClient) GetSession(req *SessionQueryInput, headers map[string]string) (*AuthTokenResponse, error) {
+// It returns AuthTokenResponse reference or error.
+func (c *AuthorizerClient) GetSession(req *SessionQueryRequest, headers map[string]string) (*AuthTokenResponse, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: fmt.Sprintf(`query getSession($data: SessionQueryInput){session(params: $data) { %s } }`, AuthTokenResponseFragment),
+		Query: fmt.Sprintf(`query getSession($data: SessionQueryRequest){session(params: $data) { %s } }`, AuthTokenResponseFragment),
 		Variables: map[string]interface{}{
 			"data": req,
 		},

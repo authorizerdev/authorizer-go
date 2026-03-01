@@ -6,16 +6,15 @@ import (
 	"github.com/authorizerdev/authorizer-go"
 )
 
-// ForgotPasswordInputExample demonstrates how to use ForgotPassword function of authorizer skd
-func ForgotPasswordInputExample() {
+// ResendVerifyEmailExample demonstrates how to use ResendVerifyEmail function of authorizer sdk
+func ResendVerifyEmailExample() {
 	c, err := authorizer.NewAuthorizerClient(ClientID, AuthorizerURL, "", nil)
 	if err != nil {
 		panic(err)
 	}
 
-	email := "test@yopmail.com"
-	res, err := c.ForgotPassword(&authorizer.ForgotPasswordRequest{
-		Email: &email,
+	res, err := c.ResendVerifyEmail(&authorizer.ResendVerifyEmailRequest{
+		Email: "test@yopmail.com",
 	})
 	if err != nil {
 		panic(err)

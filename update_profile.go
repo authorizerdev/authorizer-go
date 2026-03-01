@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 )
 
-// UpdateProfileInput defines attributes for signup request
-type UpdateProfileInput struct {
+// UpdateProfileRequest defines attributes for update_profile request
+type UpdateProfileRequest struct {
 	Email                    *string                `json:"email,omitempty"`
 	NewPassword              *string                `json:"new_password,omitempty"`
 	ConfirmNewPassword       *string                `json:"confirm_new_password,omitempty"`
@@ -25,13 +25,15 @@ type UpdateProfileInput struct {
 	AppData                  map[string]interface{} `json:"app_data,omitempty"`
 }
 
+// UpdateProfileInput is deprecated: Use UpdateProfileRequest instead
+type UpdateProfileInput = UpdateProfileRequest
+
 // UpdateProfile is method attached to AuthorizerClient.
 // It performs update_profile mutation on authorizer instance.
-// It returns User reference or error.
-// For implementation details check UpdateProfileExample examples/update_profile.go
-func (c *AuthorizerClient) UpdateProfile(req *UpdateProfileInput, headers map[string]string) (*Response, error) {
+// It returns Response reference or error.
+func (c *AuthorizerClient) UpdateProfile(req *UpdateProfileRequest, headers map[string]string) (*Response, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `mutation updateProfile($data: UpdateProfileInput!) {	update_profile(params: $data) { message } }`,
+		Query: `mutation updateProfile($data: UpdateProfileRequest!) {	update_profile(params: $data) { message } }`,
 		Variables: map[string]interface{}{
 			"data": req,
 		},

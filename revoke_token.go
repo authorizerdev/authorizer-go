@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -16,7 +16,6 @@ type RevokeTokenInput struct {
 // RevokeToken is method attached to AuthorizerClient.
 // It performs /oauth/revoke api call on authorizer instance.
 // It takes RevokeTokenInput reference as parameter and returns Response reference or error.
-// For implementation details check RevokeTokenExample examples/revoke_token.go
 func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error) {
 	if req.RefreshToken == "" {
 		return nil, errors.New("refresh_token is required")
@@ -49,7 +48,7 @@ func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error)
 	// Hence defer close. It will automatically take care of it.
 	defer httpRes.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(httpRes.Body)
+	bodyBytes, err := io.ReadAll(httpRes.Body)
 	if err != nil {
 		return nil, err
 	}

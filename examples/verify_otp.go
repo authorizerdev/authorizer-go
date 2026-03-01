@@ -13,7 +13,7 @@ func VerifyOTPExample() {
 		panic(err)
 	}
 	email := "test@yopmail.com"
-	res, err := c.VerifyOTP(&authorizer.VerifyOTPInput{
+	res, err := c.VerifyOTP(&authorizer.VerifyOTPRequest{
 		OTP:   "test",
 		Email: &email,
 	})

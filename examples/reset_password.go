@@ -13,8 +13,9 @@ func ResetPasswordExample() {
 		panic(err)
 	}
 
-	res, err := c.ResetPassword(&authorizer.ResetPasswordInput{
-		Token:           "token obtained via forgot password email",
+	token := "token obtained via forgot password email"
+	res, err := c.ResetPassword(&authorizer.ResetPasswordRequest{
+		Token:           &token,
 		Password:        "new password",
 		ConfirmPassword: "new password",
 	})

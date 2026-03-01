@@ -13,7 +13,7 @@ func ValidateJWTTokenExample() {
 		panic(err)
 	}
 
-	loginRes, err := c.Login(&authorizer.LoginInput{
+	loginRes, err := c.Login(&authorizer.LoginRequest{
 		Email:    &TestEmail,
 		Password: "Abc@123",
 	})
@@ -21,7 +21,7 @@ func ValidateJWTTokenExample() {
 		panic(err)
 	}
 
-	res, err := c.ValidateJWTToken(&authorizer.ValidateJWTTokenInput{
+	res, err := c.ValidateJWTToken(&authorizer.ValidateJWTTokenRequest{
 		TokenType: authorizer.TokenTypeAccessToken,
 		Token:     authorizer.StringValue(loginRes.AccessToken),
 	})

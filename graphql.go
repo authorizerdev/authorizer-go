@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -45,10 +45,8 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 	}
 
 	// set the headers for this request
-	if headers != nil {
-		for key, val := range headers {
-			httpReq.Header.Add(key, val)
-		}
+	for key, val := range headers {
+		httpReq.Header.Add(key, val)
 	}
 
 	res, err := client.Do(httpReq)
@@ -59,7 +57,7 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 	// Hence defer close. It will automatically take care of it.
 	defer res.Body.Close()
 
-	bodyBytes, err := ioutil.ReadAll(res.Body)
+	bodyBytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
 	}

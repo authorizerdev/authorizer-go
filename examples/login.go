@@ -13,7 +13,7 @@ func LoginExample() {
 		panic(err)
 	}
 
-	res, err := c.Login(&authorizer.LoginInput{
+	res, err := c.Login(&authorizer.LoginRequest{
 		Email:    &TestEmail,
 		Password: "Abc@123",
 	})

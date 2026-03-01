@@ -2,14 +2,15 @@ package authorizer
 
 import "errors"
 
-// TokenQueryInput defines attributes for token request
-type TokenQueryInput struct {
+// GetTokenRequest defines attributes for token request
+type GetTokenRequest struct {
 	Code         *string `json:"code"`
 	GrantType    *string `json:"grant_type"`
 	RefreshToken *string `json:"refresh_token"`
 }
 
-// TODO check if we can use oauth get token from backend
+// TokenQueryInput is deprecated: Use GetTokenRequest instead
+type TokenQueryInput = GetTokenRequest
 
 // TokenResponse defines attributes for token request
 type TokenResponse struct {
@@ -21,9 +22,8 @@ type TokenResponse struct {
 
 // GetToken is method attached to AuthorizerClient.
 // It performs `/oauth/token` query on authorizer instance.
-// It returns User reference or error.
-// For implementation details check GetTokenExample examples/get_token.go
-func (c *AuthorizerClient) GetToken(req *TokenQueryInput) (*TokenResponse, error) {
+// It returns TokenResponse reference or error.
+func (c *AuthorizerClient) GetToken(req *GetTokenRequest) (*TokenResponse, error) {
 	grantType := StringValue(req.GrantType)
 	if grantType == "" {
 		req.GrantType = NewStringRef(GrantTypeAuthorizationCode)
