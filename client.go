@@ -46,6 +46,6 @@ func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeade
 		RedirectURL:   strings.TrimSuffix(redirectURL, "/"),
 		AuthorizerURL: strings.TrimSuffix(authorizerURL, "/"),
 		ClientID:      clientID,
-		ExtraHeaders:  extraHeaders,
+		ExtraHeaders:  headers,
 	}, nil
 }
