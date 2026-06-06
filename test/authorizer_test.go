@@ -309,3 +309,87 @@ func TestMagicLinkLogin(t *testing.T) {
 		t.Error("MagicLinkLogin: expected non-empty message")
 	}
 }
+
+func TestGetPermissions(t *testing.T) {
+	c := testClient(t)
+	email := uniqueEmail()
+
+	_, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed (prerequisite): %v", err)
+	}
+
+	loginRes, err := c.Login(&authorizer.LoginRequest{
+		Email:    &email,
+		Password: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login failed (prerequisite): %v", err)
+	}
+
+	// A freshly signed up user has no fine-grained permissions assigned, so the
+	// call should succeed and return an empty list (not an error).
+	permissions, err := c.GetPermissions(map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
+	})
+	if err != nil {
+		// Permissions endpoint may return unauthorized depending on authorizer config
+		if err.Error() == "unauthorized" {
+			t.Skip("GetPermissions returned unauthorized - FGA API may require additional authorizer configuration")
+		}
+		t.Fatalf("GetPermissions failed: %v", err)
+	}
+
+	if len(permissions) != 0 {
+		t.Errorf("GetPermissions: expected no permissions for a new user, got %d", len(permissions))
+	}
+}
+
+func TestValidateJWTTokenWithRequiredPermissions(t *testing.T) {
+	c := testClient(t)
+	email := uniqueEmail()
+
+	_, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed (prerequisite): %v", err)
+	}
+
+	loginRes, err := c.Login(&authorizer.LoginRequest{
+		Email:    &email,
+		Password: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login failed (prerequisite): %v", err)
+	}
+
+	// A new user lacks the documents:read permission, so asserting it via
+	// RequiredPermissions (AND semantics) should mark the token as not valid.
+	res, err := c.ValidateJWTToken(&authorizer.ValidateJWTTokenRequest{
+		TokenType: authorizer.TokenTypeAccessToken,
+		Token:     authorizer.StringValue(loginRes.AccessToken),
+		RequiredPermissions: []*authorizer.PermissionInput{
+			{Resource: "documents", Scope: "read"},
+		},
+	})
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			t.Skip("ValidateJWTToken returned unauthorized - FGA API may require additional authorizer configuration")
+		}
+		t.Fatalf("ValidateJWTToken failed: %v", err)
+	}
+
+	if res == nil {
+		t.Fatal("ValidateJWTToken returned nil response")
+	}
+	if res.IsValid {
+		t.Error("ValidateJWTToken: expected token to be invalid due to missing required permission")
+	}
+}

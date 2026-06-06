@@ -18,6 +18,10 @@ type ValidateJWTTokenRequest struct {
 	TokenType TokenType `json:"token_type"`
 	Token     string    `json:"token"`
 	Roles     []*string `json:"roles,omitempty"`
+	// RequiredPermissions is an optional list of resource:scope pairs that
+	// must all be granted to the token's principal (AND semantics). If any
+	// is denied the token is treated as invalid.
+	RequiredPermissions []*PermissionInput `json:"required_permissions,omitempty"`
 }
 
 // ValidateJWTTokenInput is deprecated: Use ValidateJWTTokenRequest instead

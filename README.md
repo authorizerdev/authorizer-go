@@ -58,6 +58,40 @@ if err != nil {
 }
 ```
 
+## Fine-grained authorization (FGA)
+
+Authorizer supports resource:scope based fine-grained permissions. The SDK exposes them in two ways.
+
+**1. Assert required permissions while validating** — pass `RequiredPermissions` to `ValidateJWTToken`, `ValidateSession` or `GetSession`. They are evaluated with AND semantics: every entry must be granted, otherwise the result is unauthorized.
+
+```go
+res, err := authorizerClient.ValidateJWTToken(&authorizer.ValidateJWTTokenInput{
+    TokenType: authorizer.TokenTypeAccessToken,
+    Token:     token,
+    RequiredPermissions: []*authorizer.PermissionInput{
+        {Resource: "documents", Scope: "read"},
+        {Resource: "documents", Scope: "write"},
+    },
+})
+if err != nil || !res.IsValid {
+    // unauthorized
+}
+```
+
+**2. Fetch the principal's granted permissions** — `GetPermissions` returns the resource:scope permissions for the authenticated principal. Pass the auth header (or session cookie) so the principal can be identified.
+
+```go
+permissions, err := authorizerClient.GetPermissions(map[string]string{
+    "Authorization": "Bearer " + token,
+})
+if err != nil {
+    panic(err)
+}
+for _, p := range permissions {
+    fmt.Println(p.Resource, p.Scope)
+}
+```
+
 ## How to use authorizer as API gateway
 
 > Note: This example demonstrates how to use authorizer in middleware for a [go-gin](https://github.com/gin-gonic/gin) server. But logic remains the same under the hood, where you can get auth token from `header` and validate it via authorizer SDK
