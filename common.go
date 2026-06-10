@@ -12,26 +12,7 @@ const (
 	// UserFragment defines graphql fragment for all the user attributes
 	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data revoked_timestamp
 	`
-
-	// PermissionFragment defines graphql fragment for permission attributes
-	PermissionFragment = `resource scope`
 )
-
-// Permission defines a resource:scope permission granted to a principal.
-// It is returned by the permissions query (fine-grained authorization).
-type Permission struct {
-	Resource string `json:"resource"`
-	Scope    string `json:"scope"`
-}
-
-// PermissionInput defines a resource:scope pair used to assert required
-// permissions on session and token validation. Required permissions are
-// evaluated with AND semantics — every entry must be granted, otherwise
-// the principal is treated as unauthorized.
-type PermissionInput struct {
-	Resource string `json:"resource"`
-	Scope    string `json:"scope"`
-}
 
 // AuthTokenResponseFragment defines graphql response for auth token type,
 // which is common across various authorizer operations

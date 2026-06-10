@@ -9,10 +9,6 @@ import (
 type ValidateSessionRequest struct {
 	Cookie string    `json:"cookie,omitempty"`
 	Roles  []*string `json:"roles,omitempty"`
-	// RequiredPermissions is an optional list of resource:scope pairs that
-	// must all be granted to the principal (AND semantics). If any is denied
-	// the session is treated as invalid.
-	RequiredPermissions []*PermissionInput `json:"required_permissions,omitempty"`
 }
 
 // ValidateSessionInput is deprecated: Use ValidateSessionRequest instead

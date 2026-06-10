@@ -9,10 +9,6 @@ import (
 type SessionQueryRequest struct {
 	Roles []*string `json:"roles"`
 	Scope []*string `json:"scope,omitempty"`
-	// RequiredPermissions is an optional list of resource:scope pairs that
-	// must all be granted to the principal (AND semantics). If any is denied
-	// the query returns unauthorized.
-	RequiredPermissions []*PermissionInput `json:"required_permissions,omitempty"`
 }
 
 // SessionQueryInput is deprecated: Use SessionQueryRequest instead

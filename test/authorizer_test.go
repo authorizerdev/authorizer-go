@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go"
@@ -14,10 +15,16 @@ const (
 	testPassword  = "Abc@123"
 )
 
-// testClient returns a new authorizer client configured for integration tests
+// testClient returns a new authorizer client configured for integration tests.
+// The Origin header is required: the server's CSRF middleware rejects
+// state-changing requests (all GraphQL POSTs) that carry neither an Origin nor
+// a Referer header, and in wildcard allowed-origins mode the origin must match
+// the server's own host.
 func testClient(t *testing.T) *authorizer.AuthorizerClient {
 	t.Helper()
-	c, err := authorizer.NewAuthorizerClient(clientID, authorizerURL, "", nil)
+	c, err := authorizer.NewAuthorizerClient(clientID, authorizerURL, "", map[string]string{
+		"Origin": authorizerURL,
+	})
 	if err != nil {
 		t.Fatalf("failed to create authorizer client: %v", err)
 	}
@@ -310,7 +317,28 @@ func TestMagicLinkLogin(t *testing.T) {
 	}
 }
 
-func TestGetPermissions(t *testing.T) {
+// skipIfFgaUnavailable skips an FGA integration test when the target server has
+// the fine-grained authorization engine disabled or no model installed, so the
+// suite stays green on a default (auth-only) deployment.
+func skipIfFgaUnavailable(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	// The server keeps engine errors opaque: "fine-grained authorization is
+	// not enabled" when started without an FGA store, and "authorization
+	// check failed" / "authorization list failed" when the engine is up but
+	// no authorization model has been written yet.
+	msg := err.Error()
+	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed"} {
+		if strings.Contains(strings.ToLower(msg), s) {
+			t.Skipf("FGA not available on target server (%v) - skipping", err)
+		}
+	}
+	t.Fatalf("FGA call failed: %v", err)
+}
+
+func TestFgaCheck(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
@@ -331,25 +359,28 @@ func TestGetPermissions(t *testing.T) {
 		t.Fatalf("Login failed (prerequisite): %v", err)
 	}
 
-	// A freshly signed up user has no fine-grained permissions assigned, so the
-	// call should succeed and return an empty list (not an error).
-	permissions, err := c.GetPermissions(map[string]string{
+	headers := map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
-	})
-	if err != nil {
-		// Permissions endpoint may return unauthorized depending on authorizer config
-		if err.Error() == "unauthorized" {
-			t.Skip("GetPermissions returned unauthorized - FGA API may require additional authorizer configuration")
-		}
-		t.Fatalf("GetPermissions failed: %v", err)
 	}
 
-	if len(permissions) != 0 {
-		t.Errorf("GetPermissions: expected no permissions for a new user, got %d", len(permissions))
+	// A freshly signed up user has no relationship tuples, so the check for an
+	// arbitrary object must come back denied (never errors on a healthy FGA
+	// deployment).
+	res, err := c.FgaCheck(&authorizer.FgaCheckRequest{
+		Relation: "can_view",
+		Object:   "document:1",
+	}, headers)
+	skipIfFgaUnavailable(t, err)
+
+	if res == nil {
+		t.Fatal("FgaCheck returned nil response")
+	}
+	if res.Allowed {
+		t.Error("FgaCheck: expected a new user to be denied access to document:1")
 	}
 }
 
-func TestValidateJWTTokenWithRequiredPermissions(t *testing.T) {
+func TestFgaBatchCheckAndListObjects(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
@@ -370,26 +401,36 @@ func TestValidateJWTTokenWithRequiredPermissions(t *testing.T) {
 		t.Fatalf("Login failed (prerequisite): %v", err)
 	}
 
-	// A new user lacks the documents:read permission, so asserting it via
-	// RequiredPermissions (AND semantics) should mark the token as not valid.
-	res, err := c.ValidateJWTToken(&authorizer.ValidateJWTTokenRequest{
-		TokenType: authorizer.TokenTypeAccessToken,
-		Token:     authorizer.StringValue(loginRes.AccessToken),
-		RequiredPermissions: []*authorizer.PermissionInput{
-			{Resource: "documents", Scope: "read"},
-		},
-	})
-	if err != nil {
-		if err.Error() == "unauthorized" {
-			t.Skip("ValidateJWTToken returned unauthorized - FGA API may require additional authorizer configuration")
-		}
-		t.Fatalf("ValidateJWTToken failed: %v", err)
+	headers := map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
 	}
 
-	if res == nil {
-		t.Fatal("ValidateJWTToken returned nil response")
+	batch, err := c.FgaBatchCheck(&authorizer.FgaBatchCheckRequest{
+		Checks: []*authorizer.FgaCheckPair{
+			{Relation: "can_view", Object: "document:1"},
+			{Relation: "can_edit", Object: "document:1"},
+		},
+	}, headers)
+	skipIfFgaUnavailable(t, err)
+	if batch == nil || len(batch.Results) != 2 {
+		t.Fatalf("FgaBatchCheck: expected 2 results, got %+v", batch)
 	}
-	if res.IsValid {
-		t.Error("ValidateJWTToken: expected token to be invalid due to missing required permission")
+	for i, r := range batch.Results {
+		if r.Allowed {
+			t.Errorf("FgaBatchCheck: expected check %d to be denied for a new user", i)
+		}
+	}
+
+	// A new user relates to no documents.
+	objs, err := c.FgaListObjects(&authorizer.FgaListObjectsRequest{
+		Relation:   "can_view",
+		ObjectType: "document",
+	}, headers)
+	skipIfFgaUnavailable(t, err)
+	if objs == nil {
+		t.Fatal("FgaListObjects returned nil response")
+	}
+	if len(objs.Objects) != 0 {
+		t.Errorf("FgaListObjects: expected no accessible objects for a new user, got %d", len(objs.Objects))
 	}
 }

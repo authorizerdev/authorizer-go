@@ -60,36 +60,65 @@ if err != nil {
 
 ## Fine-grained authorization (FGA)
 
-Authorizer supports resource:scope based fine-grained permissions. The SDK exposes them in two ways.
+Authorizer ships an embedded [OpenFGA](https://openfga.dev) engine for relationship-based
+access control (ReBAC). You model your domain as object **types** with **relations**
+(`viewer`, `editor`, `owner`…), grant access by writing **relationship tuples**
+(`user:alice` is `viewer` of `document:1`), and ask the engine whether access is allowed.
 
-**1. Assert required permissions while validating** — pass `RequiredPermissions` to `ValidateJWTToken`, `ValidateSession` or `GetSession`. They are evaluated with AND semantics: every entry must be granted, otherwise the result is unauthorized.
+Authoring the model and tuples is an admin task — do it once in the dashboard under
+**Authorization**, or via the `_fga_*` admin GraphQL API. The SDK exposes only the
+read-side checks an application needs at request time. For every call the subject
+defaults to the authenticated caller and is pinned server-side from the request
+headers (bearer token / session cookie), so pass them.
 
-```go
-res, err := authorizerClient.ValidateJWTToken(&authorizer.ValidateJWTTokenInput{
-    TokenType: authorizer.TokenTypeAccessToken,
-    Token:     token,
-    RequiredPermissions: []*authorizer.PermissionInput{
-        {Resource: "documents", Scope: "read"},
-        {Resource: "documents", Scope: "write"},
-    },
-})
-if err != nil || !res.IsValid {
-    // unauthorized
-}
-```
-
-**2. Fetch the principal's granted permissions** — `GetPermissions` returns the resource:scope permissions for the authenticated principal. Pass the auth header (or session cookie) so the principal can be identified.
+**1. Check a single permission** — `FgaCheck` answers "does the caller have `relation`
+on `object`?".
 
 ```go
-permissions, err := authorizerClient.GetPermissions(map[string]string{
+res, err := authorizerClient.FgaCheck(&authorizer.FgaCheckRequest{
+    Relation: "can_view",
+    Object:   "document:1",
+}, map[string]string{
     "Authorization": "Bearer " + token,
 })
 if err != nil {
     panic(err)
 }
-for _, p := range permissions {
-    fmt.Println(p.Resource, p.Scope)
+if res.Allowed {
+    // caller may view document:1
 }
+```
+
+**2. Check many at once** — `FgaBatchCheck` evaluates several pairs in one round trip;
+results come back in the same order as the supplied checks.
+
+```go
+res, err := authorizerClient.FgaBatchCheck(&authorizer.FgaBatchCheckRequest{
+    Checks: []*authorizer.FgaCheckPair{
+        {Relation: "can_view", Object: "document:1"},
+        {Relation: "can_edit", Object: "document:1"},
+    },
+}, map[string]string{"Authorization": "Bearer " + token})
+if err != nil {
+    panic(err)
+}
+for i, r := range res.Results {
+    fmt.Println(i, r.Allowed)
+}
+```
+
+**3. List accessible objects** — `FgaListObjects` returns the ids of every object of a
+type the caller relates to (handy for filtering a list to what the user can see).
+
+```go
+res, err := authorizerClient.FgaListObjects(&authorizer.FgaListObjectsRequest{
+    Relation:   "can_view",
+    ObjectType: "document",
+}, map[string]string{"Authorization": "Bearer " + token})
+if err != nil {
+    panic(err)
+}
+fmt.Println(res.Objects) // ["document:1", "document:7", ...]
 ```
 
 ## How to use authorizer as API gateway
