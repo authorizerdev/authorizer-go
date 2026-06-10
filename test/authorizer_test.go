@@ -338,7 +338,7 @@ func skipIfFgaUnavailable(t *testing.T, err error) {
 	t.Fatalf("FGA call failed: %v", err)
 }
 
-func TestFgaCheck(t *testing.T) {
+func TestCheckPermissions(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
@@ -363,74 +363,68 @@ func TestFgaCheck(t *testing.T) {
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
 	}
 
-	// A freshly signed up user has no relationship tuples, so the check for an
-	// arbitrary object must come back denied (never errors on a healthy FGA
-	// deployment).
-	res, err := c.FgaCheck(&authorizer.FgaCheckRequest{
-		Relation: "can_view",
-		Object:   "document:1",
-	}, headers)
-	skipIfFgaUnavailable(t, err)
-
-	if res == nil {
-		t.Fatal("FgaCheck returned nil response")
-	}
-	if res.Allowed {
-		t.Error("FgaCheck: expected a new user to be denied access to document:1")
-	}
-}
-
-func TestFgaBatchCheckAndListObjects(t *testing.T) {
-	c := testClient(t)
-	email := uniqueEmail()
-
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
-
-	headers := map[string]string{
-		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
-	}
-
-	batch, err := c.FgaBatchCheck(&authorizer.FgaBatchCheckRequest{
-		Checks: []*authorizer.FgaCheckPair{
+	// A freshly signed up user has no relationship tuples, so every check for
+	// an arbitrary object must come back denied (never errors on a healthy FGA
+	// deployment). Results echo each relation/object pair in request order.
+	res, err := c.CheckPermissions(&authorizer.CheckPermissionsRequest{
+		Checks: []*authorizer.PermissionCheckInput{
 			{Relation: "can_view", Object: "document:1"},
 			{Relation: "can_edit", Object: "document:1"},
 		},
 	}, headers)
 	skipIfFgaUnavailable(t, err)
-	if batch == nil || len(batch.Results) != 2 {
-		t.Fatalf("FgaBatchCheck: expected 2 results, got %+v", batch)
+
+	if res == nil || len(res.Results) != 2 {
+		t.Fatalf("CheckPermissions: expected 2 results, got %+v", res)
 	}
-	for i, r := range batch.Results {
+	for i, r := range res.Results {
 		if r.Allowed {
-			t.Errorf("FgaBatchCheck: expected check %d to be denied for a new user", i)
+			t.Errorf("CheckPermissions: expected check %d to be denied for a new user", i)
 		}
+		if r.Relation == "" || r.Object == "" {
+			t.Errorf("CheckPermissions: expected result %d to echo the checked relation/object pair, got %+v", i, r)
+		}
+	}
+	if res.Results[0].Relation != "can_view" || res.Results[1].Relation != "can_edit" {
+		t.Errorf("CheckPermissions: results not positionally aligned with request: %+v", res.Results)
+	}
+}
+
+func TestListPermissions(t *testing.T) {
+	c := testClient(t)
+	email := uniqueEmail()
+
+	_, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed (prerequisite): %v", err)
+	}
+
+	loginRes, err := c.Login(&authorizer.LoginRequest{
+		Email:    &email,
+		Password: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login failed (prerequisite): %v", err)
+	}
+
+	headers := map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
 	}
 
 	// A new user relates to no documents.
-	objs, err := c.FgaListObjects(&authorizer.FgaListObjectsRequest{
+	objs, err := c.ListPermissions(&authorizer.ListPermissionsRequest{
 		Relation:   "can_view",
 		ObjectType: "document",
 	}, headers)
 	skipIfFgaUnavailable(t, err)
 	if objs == nil {
-		t.Fatal("FgaListObjects returned nil response")
+		t.Fatal("ListPermissions returned nil response")
 	}
 	if len(objs.Objects) != 0 {
-		t.Errorf("FgaListObjects: expected no accessible objects for a new user, got %d", len(objs.Objects))
+		t.Errorf("ListPermissions: expected no accessible objects for a new user, got %d", len(objs.Objects))
 	}
 }
