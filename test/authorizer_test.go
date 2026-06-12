@@ -328,9 +328,11 @@ func skipIfFgaUnavailable(t *testing.T, err error) {
 	// The server keeps engine errors opaque: "fine-grained authorization is
 	// not enabled" when started without an FGA store, and "authorization
 	// check failed" / "authorization list failed" when the engine is up but
-	// no authorization model has been written yet.
+	// no authorization model has been written yet. Servers that predate the
+	// FGA schema reject the query itself with `Unknown type
+	// "CheckPermissionsInput"` (or the List equivalent).
 	msg := err.Error()
-	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed"} {
+	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed", "unknown type"} {
 		if strings.Contains(strings.ToLower(msg), s) {
 			t.Skipf("FGA not available on target server (%v) - skipping", err)
 		}
@@ -426,5 +428,11 @@ func TestListPermissions(t *testing.T) {
 	}
 	if len(objs.Objects) != 0 {
 		t.Errorf("ListPermissions: expected no accessible objects for a new user, got %d", len(objs.Objects))
+	}
+	if len(objs.Permissions) != 0 {
+		t.Errorf("ListPermissions: expected no permissions for a new user, got %d", len(objs.Permissions))
+	}
+	if objs.Truncated {
+		t.Error("ListPermissions: expected truncated=false for an empty result")
 	}
 }

@@ -98,6 +98,9 @@ for _, r := range res.Results {
 
 **2. List accessible objects** — `ListPermissions` returns the ids of every object of a
 type the caller holds a relation on (handy for filtering a list to what the user can see).
+Both filters are optional: an empty request enumerates everything the caller holds, with
+the `(Object, Relation)` detail in `Permissions` and `Truncated` set when the result was
+capped at 1000 entries.
 
 ```go
 res, err := authorizerClient.ListPermissions(&authorizer.ListPermissionsRequest{
