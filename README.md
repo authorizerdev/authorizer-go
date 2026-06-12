@@ -58,6 +58,58 @@ if err != nil {
 }
 ```
 
+## Fine-grained authorization (FGA)
+
+Authorizer ships an embedded [OpenFGA](https://openfga.dev) engine for relationship-based
+access control (ReBAC). You model your domain as object **types** with **relations**
+(`viewer`, `editor`, `owner`…), grant access by writing **relationship tuples**
+(`user:alice` is `viewer` of `document:1`), and ask the engine whether access is allowed.
+
+Authoring the model and tuples is an admin task — do it once in the dashboard under
+**Authorization**, or via the `_fga_*` admin GraphQL API. The SDK exposes only the
+read-side checks an application needs at request time. For every call the subject
+defaults to the authenticated caller and is pinned server-side from the request
+headers (bearer token / session cookie), so pass them. The optional `User` field
+(`"type:id"`, or a bare id treated as `"user:<id>"`) overrides the subject, but is
+honored only when the caller is a super-admin or it equals the caller's own token
+subject — anything else is rejected by the server.
+
+**1. Check permissions** — `CheckPermissions` evaluates one or more
+"does the caller have `relation` on `object`?" checks in a single round trip.
+Each result echoes its relation/object pair and comes back in the same order as
+the supplied checks.
+
+```go
+res, err := authorizerClient.CheckPermissions(&authorizer.CheckPermissionsRequest{
+    Checks: []*authorizer.PermissionCheckInput{
+        {Relation: "can_view", Object: "document:1"},
+        {Relation: "can_edit", Object: "document:1"},
+    },
+}, map[string]string{
+    "Authorization": "Bearer " + token,
+})
+if err != nil {
+    panic(err)
+}
+for _, r := range res.Results {
+    fmt.Println(r.Relation, r.Object, r.Allowed)
+}
+```
+
+**2. List accessible objects** — `ListPermissions` returns the ids of every object of a
+type the caller holds a relation on (handy for filtering a list to what the user can see).
+
+```go
+res, err := authorizerClient.ListPermissions(&authorizer.ListPermissionsRequest{
+    Relation:   "can_view",
+    ObjectType: "document",
+}, map[string]string{"Authorization": "Bearer " + token})
+if err != nil {
+    panic(err)
+}
+fmt.Println(res.Objects) // ["document:1", "document:7", ...]
+```
+
 ## How to use authorizer as API gateway
 
 > Note: This example demonstrates how to use authorizer in middleware for a [go-gin](https://github.com/gin-gonic/gin) server. But logic remains the same under the hood, where you can get auth token from `header` and validate it via authorizer SDK

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go"
@@ -14,10 +15,16 @@ const (
 	testPassword  = "Abc@123"
 )
 
-// testClient returns a new authorizer client configured for integration tests
+// testClient returns a new authorizer client configured for integration tests.
+// The Origin header is required: the server's CSRF middleware rejects
+// state-changing requests (all GraphQL POSTs) that carry neither an Origin nor
+// a Referer header, and in wildcard allowed-origins mode the origin must match
+// the server's own host.
 func testClient(t *testing.T) *authorizer.AuthorizerClient {
 	t.Helper()
-	c, err := authorizer.NewAuthorizerClient(clientID, authorizerURL, "", nil)
+	c, err := authorizer.NewAuthorizerClient(clientID, authorizerURL, "", map[string]string{
+		"Origin": authorizerURL,
+	})
 	if err != nil {
 		t.Fatalf("failed to create authorizer client: %v", err)
 	}
@@ -307,5 +314,117 @@ func TestMagicLinkLogin(t *testing.T) {
 	}
 	if res.Message == "" {
 		t.Error("MagicLinkLogin: expected non-empty message")
+	}
+}
+
+// skipIfFgaUnavailable skips an FGA integration test when the target server has
+// the fine-grained authorization engine disabled or no model installed, so the
+// suite stays green on a default (auth-only) deployment.
+func skipIfFgaUnavailable(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		return
+	}
+	// The server keeps engine errors opaque: "fine-grained authorization is
+	// not enabled" when started without an FGA store, and "authorization
+	// check failed" / "authorization list failed" when the engine is up but
+	// no authorization model has been written yet.
+	msg := err.Error()
+	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed"} {
+		if strings.Contains(strings.ToLower(msg), s) {
+			t.Skipf("FGA not available on target server (%v) - skipping", err)
+		}
+	}
+	t.Fatalf("FGA call failed: %v", err)
+}
+
+func TestCheckPermissions(t *testing.T) {
+	c := testClient(t)
+	email := uniqueEmail()
+
+	_, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed (prerequisite): %v", err)
+	}
+
+	loginRes, err := c.Login(&authorizer.LoginRequest{
+		Email:    &email,
+		Password: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login failed (prerequisite): %v", err)
+	}
+
+	headers := map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
+	}
+
+	// A freshly signed up user has no relationship tuples, so every check for
+	// an arbitrary object must come back denied (never errors on a healthy FGA
+	// deployment). Results echo each relation/object pair in request order.
+	res, err := c.CheckPermissions(&authorizer.CheckPermissionsRequest{
+		Checks: []*authorizer.PermissionCheckInput{
+			{Relation: "can_view", Object: "document:1"},
+			{Relation: "can_edit", Object: "document:1"},
+		},
+	}, headers)
+	skipIfFgaUnavailable(t, err)
+
+	if res == nil || len(res.Results) != 2 {
+		t.Fatalf("CheckPermissions: expected 2 results, got %+v", res)
+	}
+	for i, r := range res.Results {
+		if r.Allowed {
+			t.Errorf("CheckPermissions: expected check %d to be denied for a new user", i)
+		}
+		if r.Relation == "" || r.Object == "" {
+			t.Errorf("CheckPermissions: expected result %d to echo the checked relation/object pair, got %+v", i, r)
+		}
+	}
+	if res.Results[0].Relation != "can_view" || res.Results[1].Relation != "can_edit" {
+		t.Errorf("CheckPermissions: results not positionally aligned with request: %+v", res.Results)
+	}
+}
+
+func TestListPermissions(t *testing.T) {
+	c := testClient(t)
+	email := uniqueEmail()
+
+	_, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed (prerequisite): %v", err)
+	}
+
+	loginRes, err := c.Login(&authorizer.LoginRequest{
+		Email:    &email,
+		Password: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("Login failed (prerequisite): %v", err)
+	}
+
+	headers := map[string]string{
+		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
+	}
+
+	// A new user relates to no documents.
+	objs, err := c.ListPermissions(&authorizer.ListPermissionsRequest{
+		Relation:   "can_view",
+		ObjectType: "document",
+	}, headers)
+	skipIfFgaUnavailable(t, err)
+	if objs == nil {
+		t.Fatal("ListPermissions returned nil response")
+	}
+	if len(objs.Objects) != 0 {
+		t.Errorf("ListPermissions: expected no accessible objects for a new user, got %d", len(objs.Objects))
 	}
 }
