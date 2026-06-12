@@ -44,6 +44,12 @@ if err != nil {
 }
 ```
 
+> **Note (Authorizer ≥ v2.3.0):** the server's CSRF guard requires an `Origin`
+> header on state-changing requests. The client sends the Authorizer server's
+> own origin by default, which always passes. If your instance restricts
+> `ALLOWED_ORIGINS`, pass your app's origin instead via `extraHeaders`:
+> `map[string]string{"Origin": "https://your-app.com"}`.
+
 ### Step 3: Access all the SDK methods using authorizer client instance, initialized on step 2
 
 **Example**

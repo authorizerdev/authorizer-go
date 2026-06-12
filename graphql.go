@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 )
 
 // GraphQLRequest is object used to make graphql queries
@@ -49,6 +50,18 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 		httpReq.Header.Add(key, val)
 	}
 
+	// Authorizer's CSRF guard rejects state-changing requests without an
+	// Origin or Referer header. Browsers send Origin automatically; this
+	// server-side client must set it explicitly. The server's own origin
+	// always passes the guard's same-origin rule (the default when
+	// ALLOWED_ORIGINS is the wildcard). Deployments with an explicit
+	// allowlist can override it via ExtraHeaders or per-call headers.
+	if httpReq.Header.Get("Origin") == "" {
+		if u, err := url.Parse(c.AuthorizerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			httpReq.Header.Set("Origin", u.Scheme+"://"+u.Host)
+		}
+	}
+
 	res, err := client.Do(httpReq)
 	if err != nil {
 		return nil, err
@@ -70,6 +83,13 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 
 	if len(gqlRes.Errors) > 0 {
 		return nil, errors.New(gqlRes.Errors[0].Message)
+	}
+
+	// Non-GraphQL failures (e.g. the CSRF guard's 403, a proxy error page)
+	// carry no "errors" array. Without this check they would surface as a
+	// nil result with a nil error and panic the caller.
+	if res.StatusCode >= http.StatusBadRequest {
+		return nil, errors.New(http.StatusText(res.StatusCode) + ": " + string(bodyBytes))
 	}
 
 	dataBytes, err := json.Marshal(gqlRes.Data)
