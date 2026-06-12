@@ -11,7 +11,7 @@ import (
 // For implementation details check GetProfileExample examples/get_profile.go
 func (c *AuthorizerClient) GetProfile(headers map[string]string) (*User, error) {
 	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: fmt.Sprintf(`query {	profile { %s } }`, UserFragment),
+		Query:     fmt.Sprintf(`query {	profile { %s } }`, UserFragment),
 		Variables: nil,
 	}, headers)
 	if err != nil {

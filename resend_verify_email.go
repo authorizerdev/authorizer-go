@@ -6,8 +6,8 @@ import (
 
 // ResendVerifyEmailRequest defines attributes for resend_verify_email request
 type ResendVerifyEmailRequest struct {
-	Email       string  `json:"email"`
-	Identifier  *string `json:"identifier,omitempty"`
+	Email      string  `json:"email"`
+	Identifier *string `json:"identifier,omitempty"`
 }
 
 // ResendVerifyEmail is method attached to AuthorizerClient.
