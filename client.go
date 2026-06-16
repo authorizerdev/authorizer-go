@@ -13,11 +13,39 @@ type AuthorizerClient struct {
 	AuthorizerURL string
 	RedirectURL   string
 	ExtraHeaders  map[string]string
+	// Protocol selects the wire transport (graphql, rest or grpc). Defaults to
+	// ProtocolGraphQL when unset, keeping the SDK backward compatible.
+	Protocol Protocol
+	// GRPCEndpoint overrides the host:port dialed when Protocol is grpc. When
+	// empty it is derived from AuthorizerURL using the gRPC default port.
+	GRPCEndpoint string
+}
+
+// ClientOption customizes an AuthorizerClient at construction time.
+type ClientOption func(*AuthorizerClient)
+
+// WithProtocol sets the wire transport the client uses (graphql, rest or grpc).
+func WithProtocol(p Protocol) ClientOption {
+	return func(c *AuthorizerClient) {
+		c.Protocol = p
+	}
+}
+
+// WithGRPCEndpoint sets the host:port dialed for grpc calls. The authorizer
+// server's gRPC listener runs on its own port (default 9091), separate from the
+// HTTP port in AuthorizerURL. When unset, the endpoint is derived from
+// AuthorizerURL's host with the default gRPC port (9091).
+func WithGRPCEndpoint(addr string) ClientOption {
+	return func(c *AuthorizerClient) {
+		c.GRPCEndpoint = addr
+	}
 }
 
 // NewAuthorizerClient creates an authorizer client instance.
 // It returns reference to authorizer client instance or error.
-func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeaders map[string]string) (*AuthorizerClient, error) {
+// The optional functional options (e.g. WithProtocol) tweak behavior while
+// keeping the original positional signature backward compatible.
+func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeaders map[string]string, opts ...ClientOption) (*AuthorizerClient, error) {
 	if strings.TrimSpace(clientID) == "" {
 		return nil, fmt.Errorf("clientID missing")
 	}
@@ -42,10 +70,15 @@ func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeade
 	// Add clientID to headers
 	headers["x-authorizer-client-id"] = clientID
 
-	return &AuthorizerClient{
+	c := &AuthorizerClient{
 		RedirectURL:   strings.TrimSuffix(redirectURL, "/"),
 		AuthorizerURL: strings.TrimSuffix(authorizerURL, "/"),
 		ClientID:      clientID,
-		ExtraHeaders:  headers,
-	}, nil
+		ExtraHeaders:  extraHeaders,
+		Protocol:      ProtocolGraphQL,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c, nil
 }

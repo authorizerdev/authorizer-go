@@ -1,7 +1,11 @@
 package authorizer
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // MetaDataResponse defines attributes for MetaData response query
@@ -32,16 +36,24 @@ type MetaDataResponse struct {
 // It performs meta query on authorizer instance.
 // It returns MetaResponse reference or error.
 func (c *AuthorizerClient) GetMetaData() (*MetaDataResponse, error) {
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query:     `query { meta { version client_id is_google_login_enabled is_facebook_login_enabled is_github_login_enabled is_linkedin_login_enabled is_apple_login_enabled is_twitter_login_enabled is_discord_login_enabled is_microsoft_login_enabled is_twitch_login_enabled is_roblox_login_enabled is_email_verification_enabled is_basic_authentication_enabled is_magic_link_login_enabled is_sign_up_enabled is_strong_password_enabled is_multi_factor_auth_enabled is_mobile_basic_authentication_enabled is_phone_verification_enabled } }`,
-		Variables: nil,
-	}, nil)
+	var res MetaDataResponse
+	err := c.execute(methodSpec{
+		name: "GetMetaData",
+		graphql: &GraphQLRequest{
+			Query:     `query { meta { version client_id is_google_login_enabled is_facebook_login_enabled is_github_login_enabled is_linkedin_login_enabled is_apple_login_enabled is_twitter_login_enabled is_discord_login_enabled is_microsoft_login_enabled is_twitch_login_enabled is_roblox_login_enabled is_email_verification_enabled is_basic_authentication_enabled is_magic_link_login_enabled is_sign_up_enabled is_strong_password_enabled is_multi_factor_auth_enabled is_mobile_basic_authentication_enabled is_phone_verification_enabled } }`,
+			Variables: nil,
+		},
+		graphqlField: "meta",
+		restMethod:   http.MethodGet,
+		restPath:     "/v1/meta",
+		restBody:     nil,
+		restResp:     func() proto.Message { return &authorizerv1.Meta{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			return cli.Meta(ctx, &authorizerv1.MetaRequest{})
+		},
+	}, nil, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*MetaDataResponse
-	json.Unmarshal(bytesData, &res)
-
-	return res["meta"], nil
+	return &res, nil
 }

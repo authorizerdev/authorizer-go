@@ -5,12 +5,13 @@
 # 2. Run tests: make test
 
 # Docker image for authorizer server
-AUTHORIZER_IMAGE := lakhansamani/authorizer:latest
+AUTHORIZER_IMAGE := quay.io/authorizer/authorizer:2.3.0
 AUTHORIZER_CONTAINER := authorizer-test
 
 .PHONY: docker-up docker-down test
 
-# Start authorizer in Docker for integration testing
+# Start authorizer in Docker for integration testing. gRPC listens on its own
+# port (9091) and needs --grpc-insecure for plaintext local/CI testing.
 docker-up:
 	@if docker ps -q -f name=^/$(AUTHORIZER_CONTAINER)$$ | grep -q .; then \
 		echo "Authorizer container already running"; \
@@ -19,6 +20,7 @@ docker-up:
 		docker run -d --rm \
 			--name $(AUTHORIZER_CONTAINER) \
 			-p 8080:8080 \
+			-p 9091:9091 \
 			$(AUTHORIZER_IMAGE) \
 			--database-type=sqlite \
 			--database-url=test.db \
@@ -26,10 +28,11 @@ docker-up:
 			--jwt-secret=test \
 			--admin-secret=admin \
 			--client-id=123456 \
-			--client-secret=secret; \
+			--client-secret=secret \
+			--grpc-insecure=true; \
 		echo "Waiting for authorizer to be ready..."; \
-		sleep 3; \
-		echo "Authorizer is running at http://localhost:8080"; \
+		sleep 5; \
+		echo "Authorizer is running at http://localhost:8080 (gRPC :9091)"; \
 	fi
 
 # Stop the authorizer container

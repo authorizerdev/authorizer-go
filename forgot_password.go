@@ -1,7 +1,11 @@
 package authorizer
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // ForgotPasswordRequest defines attributes for forgot_password request
@@ -28,18 +32,28 @@ func (c *AuthorizerClient) ForgotPassword(req *ForgotPasswordRequest) (*ForgotPa
 		req.RedirectURI = NewStringRef(c.RedirectURL)
 	}
 
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `mutation forgotPassword($data: ForgotPasswordRequest!) { forgot_password(params: $data) { message should_show_mobile_otp_screen } }`,
-		Variables: map[string]interface{}{
-			"data": req,
+	var res ForgotPasswordResponse
+	err := c.execute(methodSpec{
+		name: "ForgotPassword",
+		graphql: &GraphQLRequest{
+			Query:     `mutation forgotPassword($data: ForgotPasswordRequest!) { forgot_password(params: $data) { message should_show_mobile_otp_screen } }`,
+			Variables: map[string]interface{}{"data": req},
 		},
-	}, nil)
+		graphqlField: "forgot_password",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/forgot_password",
+		restBody:     req,
+		restResp:     func() proto.Message { return &authorizerv1.ForgotPasswordResponse{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			var in authorizerv1.ForgotPasswordRequest
+			if err := remarshal(req, &in); err != nil {
+				return nil, err
+			}
+			return cli.ForgotPassword(ctx, &in)
+		},
+	}, nil, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*ForgotPasswordResponse
-	json.Unmarshal(bytesData, &res)
-
-	return res["forgot_password"], nil
+	return &res, nil
 }

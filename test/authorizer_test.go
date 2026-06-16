@@ -3,17 +3,28 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go"
 )
 
-const (
-	authorizerURL = "http://localhost:8080"
-	clientID      = "123456"
-	testPassword  = "Abc@123"
+// Integration-test target. Overridable via env so the same suite runs against a
+// local container on a non-default port and in CI.
+var (
+	authorizerURL = envOr("AUTHORIZER_TEST_URL", "http://localhost:8080")
+	clientID      = envOr("AUTHORIZER_TEST_CLIENT_ID", "123456")
 )
+
+const testPassword = "Abc@123"
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
 
 // testClient returns a new authorizer client configured for integration tests.
 // The Origin header is required: the server's CSRF middleware rejects
@@ -328,9 +339,11 @@ func skipIfFgaUnavailable(t *testing.T, err error) {
 	// The server keeps engine errors opaque: "fine-grained authorization is
 	// not enabled" when started without an FGA store, and "authorization
 	// check failed" / "authorization list failed" when the engine is up but
-	// no authorization model has been written yet.
+	// no authorization model has been written yet. Servers that predate the
+	// FGA schema reject the query itself with `Unknown type
+	// "CheckPermissionsInput"` (or the List equivalent).
 	msg := err.Error()
-	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed"} {
+	for _, s := range []string{"not enabled", "unauthorized", "check failed", "list failed", "unknown type"} {
 		if strings.Contains(strings.ToLower(msg), s) {
 			t.Skipf("FGA not available on target server (%v) - skipping", err)
 		}
@@ -426,5 +439,11 @@ func TestListPermissions(t *testing.T) {
 	}
 	if len(objs.Objects) != 0 {
 		t.Errorf("ListPermissions: expected no accessible objects for a new user, got %d", len(objs.Objects))
+	}
+	if len(objs.Permissions) != 0 {
+		t.Errorf("ListPermissions: expected no permissions for a new user, got %d", len(objs.Permissions))
+	}
+	if objs.Truncated {
+		t.Error("ListPermissions: expected truncated=false for an empty result")
 	}
 }
