@@ -5,7 +5,7 @@
 # 2. Run tests: make test
 
 # Docker image for authorizer server
-AUTHORIZER_IMAGE := quay.io/authorizer/authorizer:2.3.0-rc.9
+AUTHORIZER_IMAGE := quay.io/authorizer/authorizer:2.3.0
 AUTHORIZER_CONTAINER := authorizer-test
 
 .PHONY: docker-up docker-down test

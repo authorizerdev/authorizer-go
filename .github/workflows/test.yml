@@ -30,7 +30,7 @@ jobs:
             echo "These files need gofmt:"; echo "$unformatted"; exit 1
           fi
 
-      # make test starts the quay.io/authorizer/authorizer:2.3.0-rc.9 container
+      # make test starts the quay.io/authorizer/authorizer:2.3.0 container
       # (docker is preinstalled on ubuntu-latest), runs the integration suite
       # across graphql/rest/grpc, then tears the container down.
       - name: Integration tests

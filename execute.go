@@ -15,7 +15,7 @@ import (
 // protocol. A protocol whose field is empty/nil is unsupported and yields a
 // clear "<name> not available over <protocol>; use <supported>" error before
 // any network call — mirroring the admin client's availability map. As of
-// 2.3.0-rc.9 every public RPC is implemented over graphql + rest + grpc.
+// 2.3.0 every public RPC is implemented over graphql + rest + grpc.
 //
 // For grpc/rest the spec returns proto response messages. The response envelope
 // is now flat (no per-RPC wrapper), so the bare proto domain message maps

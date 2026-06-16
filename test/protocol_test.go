@@ -89,7 +89,7 @@ func TestSignUpProfileAcrossProtocols(t *testing.T) {
 }
 
 // TestLoginAcrossProtocols verifies Login works over graphql, rest AND grpc as
-// of 2.3.0-rc.9 (PR #635 migrated Login to the service layer). Each protocol
+// of 2.3.0 (PR #635 migrated Login to the service layer). Each protocol
 // must return a populated access token from the flat AuthResponse.
 func TestLoginAcrossProtocols(t *testing.T) {
 	for _, p := range protocols {
