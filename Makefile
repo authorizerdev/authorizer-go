@@ -29,9 +29,13 @@ docker-up:
 			--admin-secret=admin \
 			--client-id=123456 \
 			--client-secret=secret \
-			--grpc-insecure=true; \
+			--grpc-insecure=true \
+			--rate-limit-rps=10000 \
+			--rate-limit-burst=10000; \
 		echo "Waiting for authorizer to be ready..."; \
-		sleep 5; \
+		for i in $$(seq 1 30); do \
+			curl -fsS http://localhost:8080/health >/dev/null 2>&1 && break || sleep 2; \
+		done; \
 		echo "Authorizer is running at http://localhost:8080 (gRPC :9091)"; \
 	fi
 
