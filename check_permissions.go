@@ -1,6 +1,12 @@
 package authorizer
 
-import "encoding/json"
+import (
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
+)
 
 // PermissionCheckInput is one permission to evaluate: "does the subject have
 // Relation on Object?".
@@ -41,17 +47,28 @@ type CheckPermissionsResponse struct {
 // echoing its relation/object pair. headers must carry the caller's bearer
 // token or session cookie so the server can pin the subject.
 func (c *AuthorizerClient) CheckPermissions(req *CheckPermissionsRequest, headers map[string]string) (*CheckPermissionsResponse, error) {
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query:     `query checkPermissions($data: CheckPermissionsInput!){check_permissions(params: $data) { results { relation object allowed } } }`,
-		Variables: map[string]interface{}{"data": req},
-	}, headers)
+	var res CheckPermissionsResponse
+	err := c.execute(methodSpec{
+		name: "CheckPermissions",
+		graphql: &GraphQLRequest{
+			Query:     `query checkPermissions($data: CheckPermissionsInput!){check_permissions(params: $data) { results { relation object allowed } } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "check_permissions",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/check_permissions",
+		restBody:     req,
+		restResp:     func() proto.Message { return &authorizerv1.CheckPermissionsResponse{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			var in authorizerv1.CheckPermissionsRequest
+			if err := remarshal(req, &in); err != nil {
+				return nil, err
+			}
+			return cli.CheckPermissions(ctx, &in)
+		},
+	}, headers, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*CheckPermissionsResponse
-	if err := json.Unmarshal(bytesData, &res); err != nil {
-		return nil, err
-	}
-	return res["check_permissions"], nil
+	return &res, nil
 }

@@ -3,17 +3,28 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go"
 )
 
-const (
-	authorizerURL = "http://localhost:8080"
-	clientID      = "123456"
-	testPassword  = "Abc@123"
+// Integration-test target. Overridable via env so the same suite runs against a
+// local container on a non-default port and in CI.
+var (
+	authorizerURL = envOr("AUTHORIZER_TEST_URL", "http://localhost:8080")
+	clientID      = envOr("AUTHORIZER_TEST_CLIENT_ID", "123456")
 )
+
+const testPassword = "Abc@123"
+
+func envOr(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
 
 // testClient returns a new authorizer client configured for integration tests.
 // The Origin header is required: the server's CSRF middleware rejects

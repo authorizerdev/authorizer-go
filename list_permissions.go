@@ -1,6 +1,12 @@
 package authorizer
 
-import "encoding/json"
+import (
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
+)
 
 // ListPermissionsRequest enumerates what the subject can access. With both
 // Relation and ObjectType set it answers "which <ObjectType>s can I
@@ -38,17 +44,28 @@ type ListPermissionsResponse struct {
 // Relation on (or, with filters omitted, everything the caller holds).
 // headers must carry the caller's credentials.
 func (c *AuthorizerClient) ListPermissions(req *ListPermissionsRequest, headers map[string]string) (*ListPermissionsResponse, error) {
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query:     `query listPermissions($data: ListPermissionsInput!){list_permissions(params: $data) { objects permissions { object relation } truncated } }`,
-		Variables: map[string]interface{}{"data": req},
-	}, headers)
+	var res ListPermissionsResponse
+	err := c.execute(methodSpec{
+		name: "ListPermissions",
+		graphql: &GraphQLRequest{
+			Query:     `query listPermissions($data: ListPermissionsInput!){list_permissions(params: $data) { objects permissions { object relation } truncated } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "list_permissions",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/list_permissions",
+		restBody:     req,
+		restResp:     func() proto.Message { return &authorizerv1.ListPermissionsResponse{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			var in authorizerv1.ListPermissionsRequest
+			if err := remarshal(req, &in); err != nil {
+				return nil, err
+			}
+			return cli.ListPermissions(ctx, &in)
+		},
+	}, headers, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*ListPermissionsResponse
-	if err := json.Unmarshal(bytesData, &res); err != nil {
-		return nil, err
-	}
-	return res["list_permissions"], nil
+	return &res, nil
 }

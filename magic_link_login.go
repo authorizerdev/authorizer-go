@@ -1,7 +1,11 @@
 package authorizer
 
 import (
-	"encoding/json"
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // MagicLinkLoginRequest defines attributes for magic link login request
@@ -17,7 +21,8 @@ type MagicLinkLoginRequest struct {
 type MagicLinkLoginInput = MagicLinkLoginRequest
 
 // MagicLinkLogin is method attached to AuthorizerClient.
-// It performs magic_link_login mutation on authorizer instance.
+// It performs magic_link_login mutation on the authorizer instance over the
+// client's selected protocol (graphql, rest or grpc).
 // It takes MagicLinkLoginRequest reference as parameter and returns Response reference or error.
 func (c *AuthorizerClient) MagicLinkLogin(req *MagicLinkLoginRequest) (*Response, error) {
 	if req.State == nil || StringValue(req.State) == "" {
@@ -29,18 +34,28 @@ func (c *AuthorizerClient) MagicLinkLogin(req *MagicLinkLoginRequest) (*Response
 		req.RedirectURI = NewStringRef(c.RedirectURL)
 	}
 
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `mutation magicLinkLogin($data: MagicLinkLoginRequest!) { magic_link_login(params: $data) { message }}`,
-		Variables: map[string]interface{}{
-			"data": req,
+	var res Response
+	err := c.execute(methodSpec{
+		name: "MagicLinkLogin",
+		graphql: &GraphQLRequest{
+			Query:     `mutation magicLinkLogin($data: MagicLinkLoginRequest!) { magic_link_login(params: $data) { message }}`,
+			Variables: map[string]interface{}{"data": req},
 		},
-	}, nil)
+		graphqlField: "magic_link_login",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/magic_link_login",
+		restBody:     req,
+		restResp:     func() proto.Message { return &authorizerv1.MagicLinkLoginResponse{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			var in authorizerv1.MagicLinkLoginRequest
+			if err := remarshal(req, &in); err != nil {
+				return nil, err
+			}
+			return cli.MagicLinkLogin(ctx, &in)
+		},
+	}, nil, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*Response
-	json.Unmarshal(bytesData, &res)
-
-	return res["magic_link_login"], nil
+	return &res, nil
 }

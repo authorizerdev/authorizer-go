@@ -1,8 +1,12 @@
 package authorizer
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // GetProfile is method attached to AuthorizerClient.
@@ -10,16 +14,24 @@ import (
 // It returns User reference or error.
 // For implementation details check GetProfileExample examples/get_profile.go
 func (c *AuthorizerClient) GetProfile(headers map[string]string) (*User, error) {
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query:     fmt.Sprintf(`query {	profile { %s } }`, UserFragment),
-		Variables: nil,
-	}, headers)
+	var res User
+	err := c.execute(methodSpec{
+		name: "GetProfile",
+		graphql: &GraphQLRequest{
+			Query:     fmt.Sprintf(`query {	profile { %s } }`, UserFragment),
+			Variables: nil,
+		},
+		graphqlField: "profile",
+		restMethod:   http.MethodGet,
+		restPath:     "/v1/profile",
+		restBody:     nil,
+		restResp:     func() proto.Message { return &authorizerv1.User{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			return cli.Profile(ctx, &authorizerv1.ProfileRequest{})
+		},
+	}, headers, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*User
-	json.Unmarshal(bytesData, &res)
-
-	return res["profile"], nil
+	return &res, nil
 }

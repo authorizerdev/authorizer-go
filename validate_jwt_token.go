@@ -1,6 +1,12 @@
 package authorizer
 
-import "encoding/json"
+import (
+	"context"
+	"net/http"
+
+	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	"google.golang.org/protobuf/proto"
+)
 
 type TokenType string
 
@@ -33,18 +39,28 @@ type ValidateJWTTokenResponse struct {
 // It performs validate_jwt_token query on authorizer instance.
 // It returns ValidateJWTTokenResponse reference or error.
 func (c *AuthorizerClient) ValidateJWTToken(req *ValidateJWTTokenRequest) (*ValidateJWTTokenResponse, error) {
-	bytesData, err := c.ExecuteGraphQL(&GraphQLRequest{
-		Query: `query validateJWTToken($data: ValidateJWTTokenRequest!){validate_jwt_token(params: $data) { is_valid claims } }`,
-		Variables: map[string]interface{}{
-			"data": req,
+	var res ValidateJWTTokenResponse
+	err := c.execute(methodSpec{
+		name: "ValidateJWTToken",
+		graphql: &GraphQLRequest{
+			Query:     `query validateJWTToken($data: ValidateJWTTokenRequest!){validate_jwt_token(params: $data) { is_valid claims } }`,
+			Variables: map[string]interface{}{"data": req},
 		},
-	}, nil)
+		graphqlField: "validate_jwt_token",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/validate_jwt_token",
+		restBody:     req,
+		restResp:     func() proto.Message { return &authorizerv1.ValidateJwtTokenResponse{} },
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerServiceClient) (interface{}, error) {
+			var in authorizerv1.ValidateJwtTokenRequest
+			if err := remarshal(req, &in); err != nil {
+				return nil, err
+			}
+			return cli.ValidateJwtToken(ctx, &in)
+		},
+	}, nil, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	var res map[string]*ValidateJWTTokenResponse
-	json.Unmarshal(bytesData, &res)
-
-	return res["validate_jwt_token"], nil
+	return &res, nil
 }
