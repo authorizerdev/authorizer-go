@@ -1,92 +1,95 @@
 # authorizer-go
 
-Golang SDK for [authorizer.dev](https://authorizer.dev) server. This SDK will be handy to add API middleware where you can authorize your users. It will also empower you to perform various auth operations on authorizer server.
+Go SDK for [authorizer.dev](https://authorizer.dev) — self-hosted authentication & authorization. Current version: **2.0.0**.
 
-For detailed explanation of each functions check official [docs](https://pkg.go.dev/github.com/authorizerdev/authorizer-go)
+Use this SDK to add auth middleware to your Go services and to call any Authorizer API method. For full API docs see [pkg.go.dev/github.com/authorizerdev/authorizer-go](https://pkg.go.dev/github.com/authorizerdev/authorizer-go).
 
 ## Getting Started
 
-**Pre-requisite**: You will need an authorizer instance up and running. Checkout how you can host your instance in the [docs](https://docs.authorizer.dev/deployment)
+**Pre-requisite:** A running Authorizer instance. See the [deployment guide](https://docs.authorizer.dev/deployment).
 
-Follow the steps here to install authorizer-go in your golang project and use the methods of SDK to protect/authorize your APIs
+Once deployed, get your `Client ID` from the Authorizer dashboard.
 
-Once you have deployed authorizer instance. Get `Client ID` from your authorizer instance dashboard
-
-![client_id](https://res.cloudinary.com/dcfpom7fo/image/upload/v1663437088/Authorizer/client_id_ptjsvc.png)
-
-### Step 1: Install authorizer-go SDK
-
-Run the following command to download authorizer-go SDK
+### Step 1: Install the SDK
 
 ```bash
 go get github.com/authorizerdev/authorizer-go
 ```
 
-### Step 2: Initialize authorizer client
+### Step 2: Initialize the client
 
 **Parameters**
 
-| Key             | Type                | Required | Description |
-| --------------- | ------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `clientID`      | `string`            | `true`               | Your unique client identifier obtained from authorizer dashboard                                                |
-| `authorizerURL` | `string`            | `true`               | Authorizer server URL                                                                                           |
-| `redirectURL`   | `string`            | `false`              | Default URL to which you would like to redirect the user in case of successful signup / login / forgot password |
-| `extraHeaders`  | `map[string]string` | `false`              | set of headers that you would like to pass with each request                                                    |
+| Key             | Type                | Required | Description                                                                                          |
+| --------------- | ------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `clientID`      | `string`            | Yes      | Client ID from the Authorizer dashboard                                                              |
+| `authorizerURL` | `string`            | Yes      | Base URL of your Authorizer instance                                                                 |
+| `redirectURL`   | `string`            | No       | Default redirect URL for signup / login / forgot-password flows                                      |
+| `extraHeaders`  | `map[string]string` | No       | Headers sent on every request (e.g. `Origin`)                                                       |
 
 **Example**
 
 ```go
-defaultHeaders := map[string]string{}
+package main
 
-authorizerClient, err := authorizer.NewAuthorizerClient("YOUR_CLIENT_ID", "YOUR_AUHTORIZER_URL", "OPTIONAL_REDIRECT_URL", defaultHeaders)
-if err != nil {
-    panic(err)
+import (
+    authorizer "github.com/authorizerdev/authorizer-go"
+)
+
+func main() {
+    client, err := authorizer.NewAuthorizerClient(
+        "YOUR_CLIENT_ID",
+        "https://your-instance.example.com",
+        "https://your-app.example.com", // optional redirect URL
+        map[string]string{},
+    )
+    if err != nil {
+        panic(err)
+    }
+    _ = client
 }
 ```
 
-> **Note (Authorizer ≥ v2.3.0):** the server's CSRF guard requires an `Origin`
-> header on state-changing requests. The client sends the Authorizer server's
-> own origin by default, which always passes. If your instance restricts
-> `ALLOWED_ORIGINS`, pass your app's origin instead via `extraHeaders`:
-> `map[string]string{"Origin": "https://your-app.com"}`.
+> **Note (Authorizer >= v2.3.0):** the server's CSRF guard requires an `Origin` header on state-changing requests. The client sends the Authorizer server's own origin by default, which always passes. If your instance restricts `ALLOWED_ORIGINS`, pass your app's origin instead via `extraHeaders`: `map[string]string{"Origin": "https://your-app.com"}`.
 
-### Step 3: Access all the SDK methods using authorizer client instance, initialized on step 2
-
-**Example**
+### Step 3: Use the SDK
 
 ```go
-response, err := authorizerClient.Login(&authorizer.LoginInput{
-    Email:    "test@yopmail.com",
+response, err := client.Login(&authorizer.LoginInput{
+    Email:    "user@example.com",
     Password: "Abc@123",
 })
 if err != nil {
     panic(err)
 }
+fmt.Println("access_token:", response.AccessToken)
 ```
+
+## Admin API
+
+The SDK exposes admin methods for server-side user management. Admin operations require the admin secret; supply it via `extraHeaders`:
+
+```go
+adminClient, err := authorizer.NewAuthorizerClient(
+    "YOUR_CLIENT_ID",
+    "https://your-instance.example.com",
+    "",
+    map[string]string{"x-authorizer-admin-secret": "YOUR_ADMIN_SECRET"},
+)
+```
+
+See [admin_methods.go](admin_methods.go) for the full list of available admin operations.
 
 ## Fine-grained authorization (FGA)
 
-Authorizer ships an embedded [OpenFGA](https://openfga.dev) engine for relationship-based
-access control (ReBAC). You model your domain as object **types** with **relations**
-(`viewer`, `editor`, `owner`…), grant access by writing **relationship tuples**
-(`user:alice` is `viewer` of `document:1`), and ask the engine whether access is allowed.
+Authorizer ships an embedded [OpenFGA](https://openfga.dev) engine for relationship-based access control (ReBAC). You model your domain as object **types** with **relations** (`viewer`, `editor`, `owner`…), grant access by writing **relationship tuples**, and ask the engine whether access is allowed.
 
-Authoring the model and tuples is an admin task — do it once in the dashboard under
-**Authorization**, or via the `_fga_*` admin GraphQL API. The SDK exposes only the
-read-side checks an application needs at request time. For every call the subject
-defaults to the authenticated caller and is pinned server-side from the request
-headers (bearer token / session cookie), so pass them. The optional `User` field
-(`"type:id"`, or a bare id treated as `"user:<id>"`) overrides the subject, but is
-honored only when the caller is a super-admin or it equals the caller's own token
-subject — anything else is rejected by the server.
+Authoring the model and tuples is an admin task — do it once in the dashboard under **Authorization**, or via the `_fga_*` admin GraphQL API. The SDK exposes only the read-side checks an application needs at request time. The subject defaults to the authenticated caller and is pinned server-side from the request headers. The optional `User` field overrides the subject but is honored only for super-admins or when it equals the caller's own token subject.
 
-**1. Check permissions** — `CheckPermissions` evaluates one or more
-"does the caller have `relation` on `object`?" checks in a single round trip.
-Each result echoes its relation/object pair and comes back in the same order as
-the supplied checks.
+**Check permissions** — evaluates one or more relation checks in a single round trip:
 
 ```go
-res, err := authorizerClient.CheckPermissions(&authorizer.CheckPermissionsRequest{
+res, err := client.CheckPermissions(&authorizer.CheckPermissionsRequest{
     Checks: []*authorizer.PermissionCheckInput{
         {Relation: "can_view", Object: "document:1"},
         {Relation: "can_edit", Object: "document:1"},
@@ -102,14 +105,10 @@ for _, r := range res.Results {
 }
 ```
 
-**2. List accessible objects** — `ListPermissions` returns the ids of every object of a
-type the caller holds a relation on (handy for filtering a list to what the user can see).
-Both filters are optional: an empty request enumerates everything the caller holds, with
-the `(Object, Relation)` detail in `Permissions` and `Truncated` set when the result was
-capped at 1000 entries.
+**List accessible objects** — returns the ids of every object of a type the caller holds a relation on:
 
 ```go
-res, err := authorizerClient.ListPermissions(&authorizer.ListPermissionsRequest{
+res, err := client.ListPermissions(&authorizer.ListPermissionsRequest{
     Relation:   "can_view",
     ObjectType: "document",
 }, map[string]string{"Authorization": "Bearer " + token})
@@ -119,85 +118,71 @@ if err != nil {
 fmt.Println(res.Objects) // ["document:1", "document:7", ...]
 ```
 
-## How to use authorizer as API gateway
-
-> Note: This example demonstrates how to use authorizer in middleware for a [go-gin](https://github.com/gin-gonic/gin) server. But logic remains the same under the hood, where you can get auth token from `header` and validate it via authorizer SDK
+## API gateway example (gin)
 
 ```go
 package main
 
 import (
-	"net/http"
-	"strings"
+    "net/http"
+    "strings"
 
-	"github.com/authorizerdev/authorizer-go"
-	"github.com/gin-gonic/gin"
+    authorizer "github.com/authorizerdev/authorizer-go"
+    "github.com/gin-gonic/gin"
 )
 
 func AuthorizeMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		/**
-		  for open routes you can add condition here and just return with c.Next()
-		  so that it does not validate token for those routes
-		*/
+    return func(c *gin.Context) {
+        authHeader := c.Request.Header.Get("Authorization")
+        tokenSplit := strings.Split(authHeader, " ")
 
-		authHeader := c.Request.Header.Get("Authorization")
-		tokenSplit := strings.Split(authHeader, " ")
+        client, err := authorizer.NewAuthorizerClient(
+            "YOUR_CLIENT_ID",
+            "YOUR_AUTHORIZER_URL",
+            "",
+            map[string]string{},
+        )
+        if err != nil || len(tokenSplit) < 2 || tokenSplit[1] == "" {
+            c.AbortWithStatusJSON(401, "unauthorized")
+            return
+        }
 
-		defaultHeaders := map[string]string{}
-		authorizerClient, err := authorizer.NewAuthorizerClient("YOUR_CLIENT_ID", "YOUR_AUHTORIZER_URL", "OPTIONAL_REDIRECT_URL", defaultHeaders)
-		if err != nil {
-			// unauthorized
-			c.AbortWithStatusJSON(401, "unauthorized")
-			return
-		}
+        res, err := client.ValidateJWTToken(&authorizer.ValidateJWTTokenInput{
+            TokenType: authorizer.TokenTypeIDToken,
+            Token:     tokenSplit[1],
+        })
+        if err != nil || !res.IsValid {
+            c.AbortWithStatusJSON(401, "unauthorized")
+            return
+        }
 
-		if len(tokenSplit) < 2 || tokenSplit[1] == "" {
-			// unauthorized
-			c.AbortWithStatusJSON(401, "unauthorized")
-			return
-		}
-
-		res, err := authorizerClient.ValidateJWTToken(&authorizer.ValidateJWTTokenInput{
-			TokenType: authorizer.TokenTypeIDToken,
-			Token:     tokenSplit[1],
-		})
-		if err != nil {
-			// unauthorized
-			c.AbortWithStatusJSON(401, "unauthorized")
-			return
-		}
-
-		if !res.IsValid {
-			// unauthorized
-			c.AbortWithStatusJSON(401, "unauthorized")
-			return
-		}
-
-		c.Next()
-	}
+        c.Next()
+    }
 }
 
 func main() {
-	router := gin.New()
-	router.Use(AuthorizeMiddleware())
+    router := gin.New()
+    router.Use(AuthorizeMiddleware())
 
-	router.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "pong",
-		})
-	})
+    router.GET("/ping", func(c *gin.Context) {
+        c.JSON(http.StatusOK, gin.H{"message": "pong"})
+    })
 
-	router.Run(":8090")
+    router.Run(":8090")
 }
 ```
 
-
-**CURL command to test go-gin server created in example**
-
-Copy JWT ID token from login response of authorizer `login` mutation / social media login and replace `JWT_TOKEN` below
+Test the protected endpoint:
 
 ```bash
-curl --location --request GET 'http://localhost:8090/ping' \
---header 'Authorization: Bearer JWT_TOKEN'
+curl -H 'Authorization: Bearer JWT_TOKEN' http://localhost:8090/ping
 ```
+
+---
+
+## Release
+
+1. Tag the commit: `git tag v<version>`
+2. Push with tags: `git push origin main --tags`
+
+The GitHub Actions release workflow handles the GitHub Release creation automatically. Go modules are versioned by tags — no additional publish step is needed.
