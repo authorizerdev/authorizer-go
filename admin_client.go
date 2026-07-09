@@ -86,6 +86,11 @@ type adminMethodSpec struct {
 	graphql *GraphQLRequest
 	// graphqlField is the top-level response field to unwrap (the _-prefixed op).
 	graphqlField string
+	// graphqlWrap, when non-empty, re-wraps the unwrapped graphql payload as
+	// {graphqlWrap: <payload>} before unmarshalling into out. Used when the
+	// GraphQL op returns a domain object directly but the proto response wraps
+	// it (e.g. _update_client returns Client, proto UpdateClientResponse{client}).
+	graphqlWrap string
 
 	// restMethod / restPath; empty restPath means rest-unsupported.
 	restMethod string
@@ -164,6 +169,13 @@ func (c *AuthorizerAdminClient) execute(spec adminMethodSpec, out interface{}) e
 		field, ok := res[spec.graphqlField]
 		if !ok {
 			return nil
+		}
+		if spec.graphqlWrap != "" {
+			wrapped, err := json.Marshal(map[string]json.RawMessage{spec.graphqlWrap: field})
+			if err != nil {
+				return err
+			}
+			field = wrapped
 		}
 		return json.Unmarshal(field, out)
 	}

@@ -19,7 +19,25 @@ const (
 	adminVerifReqFields   = `id identifier token email expires created_at updated_at nonce redirect_uri`
 	adminFgaModelFields   = `id dsl`
 	adminFgaTupleFields   = `user relation object`
+
+	adminClientFields        = `id name description allowed_scopes is_active created_at updated_at`
+	adminTrustedIssuerFields = `id service_account_id name issuer_url key_source_type jwks_url expected_aud subject_claim allowed_subjects issuer_type is_active spiffe_refresh_hint_seconds created_at updated_at`
+	adminOrgFields           = `id name display_name enabled created_at updated_at`
+	adminOrgMemberFields     = `id org_id user_id roles created_at updated_at`
+	adminOrgOIDCConnFields   = `id org_id name issuer_url sso_client_id scopes redirect_uri is_active created_at updated_at`
+	adminOrgSAMLConnFields   = `id org_id name idp_entity_id idp_sso_url sp_entity_id acs_url attribute_mapping allow_idp_initiated is_active created_at updated_at`
+	adminScimEndpointFields  = `id org_id enabled created_at updated_at`
 )
+
+// wrapPagination nests a proto PaginationRequest into the GraphQL
+// PaginatedRequest input shape ({pagination: {limit, page}}) used by the
+// ListClientsRequest / ListTrustedIssuersRequest inputs.
+func wrapPagination(p *authorizerv1.PaginationRequest) map[string]interface{} {
+	if p == nil {
+		return nil
+	}
+	return map[string]interface{}{"pagination": p}
+}
 
 // ---------------------------------------------------------------------------
 // 1. AdminLogin — establishes an admin session. grpc, rest, gql.
@@ -864,6 +882,334 @@ func (c *AuthorizerAdminClient) FgaReset() (*authorizerv1.FgaResetResponse, erro
 }
 
 // ---------------------------------------------------------------------------
+// 33. CreateClient — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// CreateClient provisions a new machine/workload identity (service account).
+// The client_secret in the response is returned ONCE and can never be
+// retrieved again.
+func (c *AuthorizerAdminClient) CreateClient(req *authorizerv1.CreateClientRequest) (*authorizerv1.CreateClientResponse, error) {
+	var res authorizerv1.CreateClientResponse
+	err := c.execute(adminMethodSpec{
+		name: "CreateClient",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createClient($data: CreateClientRequest!) { _create_client(params: $data) { client { " + adminClientFields + " } client_secret } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_create_client",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/create_client",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateClient(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 34. UpdateClient — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// UpdateClient updates an existing client's metadata, scopes or active flag.
+func (c *AuthorizerAdminClient) UpdateClient(req *authorizerv1.UpdateClientRequest) (*authorizerv1.UpdateClientResponse, error) {
+	var res authorizerv1.UpdateClientResponse
+	err := c.execute(adminMethodSpec{
+		name: "UpdateClient",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateClient($data: UpdateClientRequest!) { _update_client(params: $data) { " + adminClientFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_update_client",
+		graphqlWrap:  "client",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/update_client",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateClient(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 35. DeleteClient — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// DeleteClient deletes a client. DESTRUCTIVE: permanently removes the client;
+// tokens already issued to it stop being honoured.
+func (c *AuthorizerAdminClient) DeleteClient(req *authorizerv1.DeleteClientRequest) (*authorizerv1.DeleteClientResponse, error) {
+	var res authorizerv1.DeleteClientResponse
+	err := c.execute(adminMethodSpec{
+		name: "DeleteClient",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteClient($data: ClientRequest!) { _delete_client(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_client",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_client",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteClient(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 36. RotateClientSecret — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// RotateClientSecret issues a new secret for a client. The new secret is
+// returned ONCE; the old secret keeps validating during the server's grace
+// window.
+func (c *AuthorizerAdminClient) RotateClientSecret(req *authorizerv1.RotateClientSecretRequest) (*authorizerv1.CreateClientResponse, error) {
+	var res authorizerv1.CreateClientResponse
+	err := c.execute(adminMethodSpec{
+		name: "RotateClientSecret",
+		graphql: &GraphQLRequest{
+			Query:     "mutation rotateClientSecret($data: ClientRequest!) { _rotate_client_secret(params: $data) { client { " + adminClientFields + " } client_secret } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_rotate_client_secret",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/rotate_client_secret",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RotateClientSecret(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 37. GetClient — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// GetClient returns a single client by id. The client_secret is never returned.
+func (c *AuthorizerAdminClient) GetClient(req *authorizerv1.GetClientRequest) (*authorizerv1.GetClientResponse, error) {
+	var res authorizerv1.GetClientResponse
+	err := c.execute(adminMethodSpec{
+		name: "GetClient",
+		graphql: &GraphQLRequest{
+			Query:     "query client($data: ClientRequest!) { _client(params: $data) { " + adminClientFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_client",
+		graphqlWrap:  "client",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/client",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetClient(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 38. Clients — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// Clients returns a paginated list of clients.
+func (c *AuthorizerAdminClient) Clients(req *authorizerv1.ClientsRequest) (*authorizerv1.ClientsResponse, error) {
+	// The GraphQL ListClientsRequest nests pagination one level deeper than the
+	// proto shape ({pagination: {pagination: {...}}}), so the variables are
+	// built explicitly instead of passing req through.
+	gqlData := map[string]interface{}{}
+	if req.GetPagination() != nil {
+		gqlData["pagination"] = wrapPagination(req.GetPagination())
+	}
+
+	var res authorizerv1.ClientsResponse
+	err := c.execute(adminMethodSpec{
+		name: "Clients",
+		graphql: &GraphQLRequest{
+			Query:     "query clients($data: ListClientsRequest) { _clients(params: $data) { " + adminPaginationFields + " clients { " + adminClientFields + " } } }",
+			Variables: map[string]interface{}{"data": gqlData},
+		},
+		graphqlField: "_clients",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/clients",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.Clients(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 39. AddTrustedIssuer — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// AddTrustedIssuer registers an external token issuer (K8s SA, SPIFFE, OIDC)
+// that may authenticate as the given service account via JWT-bearer assertions.
+func (c *AuthorizerAdminClient) AddTrustedIssuer(req *authorizerv1.AddTrustedIssuerRequest) (*authorizerv1.AddTrustedIssuerResponse, error) {
+	var res authorizerv1.AddTrustedIssuerResponse
+	err := c.execute(adminMethodSpec{
+		name: "AddTrustedIssuer",
+		graphql: &GraphQLRequest{
+			Query:     "mutation addTrustedIssuer($data: AddTrustedIssuerRequest!) { _add_trusted_issuer(params: $data) { " + adminTrustedIssuerFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_add_trusted_issuer",
+		graphqlWrap:  "trusted_issuer",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/add_trusted_issuer",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.AddTrustedIssuer(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 40. UpdateTrustedIssuer — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// UpdateTrustedIssuer updates an existing trusted issuer.
+func (c *AuthorizerAdminClient) UpdateTrustedIssuer(req *authorizerv1.UpdateTrustedIssuerRequest) (*authorizerv1.UpdateTrustedIssuerResponse, error) {
+	var res authorizerv1.UpdateTrustedIssuerResponse
+	err := c.execute(adminMethodSpec{
+		name: "UpdateTrustedIssuer",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateTrustedIssuer($data: UpdateTrustedIssuerRequest!) { _update_trusted_issuer(params: $data) { " + adminTrustedIssuerFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_update_trusted_issuer",
+		graphqlWrap:  "trusted_issuer",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/update_trusted_issuer",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateTrustedIssuer(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 41. DeleteTrustedIssuer — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// DeleteTrustedIssuer removes a trusted issuer. DESTRUCTIVE: assertions from
+// this issuer stop authenticating immediately.
+func (c *AuthorizerAdminClient) DeleteTrustedIssuer(req *authorizerv1.DeleteTrustedIssuerRequest) (*authorizerv1.DeleteTrustedIssuerResponse, error) {
+	var res authorizerv1.DeleteTrustedIssuerResponse
+	err := c.execute(adminMethodSpec{
+		name: "DeleteTrustedIssuer",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteTrustedIssuer($data: TrustedIssuerRequest!) { _delete_trusted_issuer(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_trusted_issuer",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_trusted_issuer",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteTrustedIssuer(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 42. GetTrustedIssuer — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// GetTrustedIssuer returns a single trusted issuer by id.
+func (c *AuthorizerAdminClient) GetTrustedIssuer(req *authorizerv1.GetTrustedIssuerRequest) (*authorizerv1.GetTrustedIssuerResponse, error) {
+	var res authorizerv1.GetTrustedIssuerResponse
+	err := c.execute(adminMethodSpec{
+		name: "GetTrustedIssuer",
+		graphql: &GraphQLRequest{
+			Query:     "query trustedIssuer($data: TrustedIssuerRequest!) { _trusted_issuer(params: $data) { " + adminTrustedIssuerFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_trusted_issuer",
+		graphqlWrap:  "trusted_issuer",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/trusted_issuer",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetTrustedIssuer(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 43. TrustedIssuers — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// TrustedIssuers returns a paginated list of trusted issuers, optionally
+// filtered by service account.
+func (c *AuthorizerAdminClient) TrustedIssuers(req *authorizerv1.TrustedIssuersRequest) (*authorizerv1.TrustedIssuersResponse, error) {
+	// The GraphQL ListTrustedIssuersRequest nests pagination one level deeper
+	// than the proto shape, so the variables are built explicitly.
+	gqlData := map[string]interface{}{}
+	if req.GetPagination() != nil {
+		gqlData["pagination"] = wrapPagination(req.GetPagination())
+	}
+	if req.ServiceAccountId != nil {
+		gqlData["service_account_id"] = req.GetServiceAccountId()
+	}
+
+	var res authorizerv1.TrustedIssuersResponse
+	err := c.execute(adminMethodSpec{
+		name: "TrustedIssuers",
+		graphql: &GraphQLRequest{
+			Query:     "query trustedIssuers($data: ListTrustedIssuersRequest) { _trusted_issuers(params: $data) { " + adminPaginationFields + " trusted_issuers { " + adminTrustedIssuerFields + " } } }",
+			Variables: map[string]interface{}{"data": gqlData},
+		},
+		graphqlField: "_trusted_issuers",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/trusted_issuers",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.TrustedIssuers(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
 // GraphQL-only admin operations. These have no gRPC stub or REST endpoint, so
 // only the graphql protocol is supported. The proto definitions do not include
 // these operations, so local request/response types are declared here.
@@ -935,6 +1281,478 @@ func (c *AuthorizerAdminClient) GenerateJWTKeys(req *GenerateJWTKeysRequest) (*G
 		graphqlField: "_generate_jwt_keys",
 	}, &res)
 	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// Organizations, org members, org OIDC/SAML connections and SCIM endpoints are
+// GraphQL-only: the admin proto has no RPCs for them, so rest/grpc return a
+// clear unsupported-protocol error. Types mirror the GraphQL schema.
+// ---------------------------------------------------------------------------
+
+// gqlOnly runs a graphql-only admin operation (no REST path, no gRPC stub).
+func (c *AuthorizerAdminClient) gqlOnly(name, query, field string, req, out interface{}) error {
+	return c.execute(adminMethodSpec{
+		name: name,
+		graphql: &GraphQLRequest{
+			Query:     query,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: field,
+	}, out)
+}
+
+// PaginationRequest mirrors the GraphQL PaginationRequest input.
+type PaginationRequest struct {
+	Limit int64 `json:"limit,omitempty"`
+	Page  int64 `json:"page,omitempty"`
+}
+
+// PaginatedRequest mirrors the GraphQL PaginatedRequest input.
+type PaginatedRequest struct {
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
+}
+
+// Pagination mirrors the GraphQL Pagination response type.
+type Pagination struct {
+	Limit  int64 `json:"limit"`
+	Page   int64 `json:"page"`
+	Offset int64 `json:"offset"`
+	Total  int64 `json:"total"`
+}
+
+// Organization defines attributes of an organization.
+type Organization struct {
+	ID          string  `json:"id"`
+	Name        string  `json:"name"`
+	DisplayName *string `json:"display_name"`
+	Enabled     bool    `json:"enabled"`
+	CreatedAt   int64   `json:"created_at"`
+	UpdatedAt   int64   `json:"updated_at"`
+}
+
+// Organizations is a paginated list of organizations.
+type Organizations struct {
+	Pagination    *Pagination     `json:"pagination"`
+	Organizations []*Organization `json:"organizations"`
+}
+
+// OrgMember defines a user's membership in an organization.
+type OrgMember struct {
+	ID        string   `json:"id"`
+	OrgID     string   `json:"org_id"`
+	UserID    string   `json:"user_id"`
+	Roles     []string `json:"roles"`
+	CreatedAt int64    `json:"created_at"`
+	UpdatedAt int64    `json:"updated_at"`
+}
+
+// OrgMembers is a paginated list of organization members.
+type OrgMembers struct {
+	Pagination *Pagination  `json:"pagination"`
+	OrgMembers []*OrgMember `json:"org_members"`
+}
+
+// CreateOrganizationRequest is the request for CreateOrganization. Name must
+// be a unique, URL-safe slug.
+type CreateOrganizationRequest struct {
+	Name        string  `json:"name"`
+	DisplayName *string `json:"display_name,omitempty"`
+}
+
+// UpdateOrganizationRequest is the request for UpdateOrganization.
+type UpdateOrganizationRequest struct {
+	ID          string  `json:"id"`
+	Name        *string `json:"name,omitempty"`
+	DisplayName *string `json:"display_name,omitempty"`
+	Enabled     *bool   `json:"enabled,omitempty"`
+}
+
+// OrganizationRequest identifies an organization by id.
+type OrganizationRequest struct {
+	ID string `json:"id"`
+}
+
+// ListOrganizationsRequest is the request for Organizations.
+type ListOrganizationsRequest struct {
+	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+}
+
+// AddOrgMemberRequest is the request for AddOrgMember. Roles defaults to an
+// empty set when omitted.
+type AddOrgMemberRequest struct {
+	OrgID  string   `json:"org_id"`
+	UserID string   `json:"user_id"`
+	Roles  []string `json:"roles,omitempty"`
+}
+
+// RemoveOrgMemberRequest is the request for RemoveOrgMember.
+type RemoveOrgMemberRequest struct {
+	OrgID  string `json:"org_id"`
+	UserID string `json:"user_id"`
+}
+
+// ListOrgMembersRequest is the request for OrgMembers.
+type ListOrgMembersRequest struct {
+	OrgID      string            `json:"org_id"`
+	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+}
+
+// CreateOrganization creates an organization (gql only).
+func (c *AuthorizerAdminClient) CreateOrganization(req *CreateOrganizationRequest) (*Organization, error) {
+	var res Organization
+	if err := c.gqlOnly("CreateOrganization",
+		"mutation createOrganization($data: CreateOrganizationRequest!) { _create_organization(params: $data) { "+adminOrgFields+" } }",
+		"_create_organization", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// UpdateOrganization updates an organization (gql only).
+func (c *AuthorizerAdminClient) UpdateOrganization(req *UpdateOrganizationRequest) (*Organization, error) {
+	var res Organization
+	if err := c.gqlOnly("UpdateOrganization",
+		"mutation updateOrganization($data: UpdateOrganizationRequest!) { _update_organization(params: $data) { "+adminOrgFields+" } }",
+		"_update_organization", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// DeleteOrganization deletes an organization (gql only). DESTRUCTIVE:
+// permanently removes the organization and its memberships/connections.
+func (c *AuthorizerAdminClient) DeleteOrganization(req *OrganizationRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("DeleteOrganization",
+		`mutation deleteOrganization($data: OrganizationRequest!) { _delete_organization(params: $data) { message } }`,
+		"_delete_organization", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// AddOrgMember adds a user to an organization (gql only).
+func (c *AuthorizerAdminClient) AddOrgMember(req *AddOrgMemberRequest) (*OrgMember, error) {
+	var res OrgMember
+	if err := c.gqlOnly("AddOrgMember",
+		"mutation addOrgMember($data: AddOrgMemberRequest!) { _add_org_member(params: $data) { "+adminOrgMemberFields+" } }",
+		"_add_org_member", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// RemoveOrgMember removes a user from an organization (gql only).
+func (c *AuthorizerAdminClient) RemoveOrgMember(req *RemoveOrgMemberRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("RemoveOrgMember",
+		`mutation removeOrgMember($data: RemoveOrgMemberRequest!) { _remove_org_member(params: $data) { message } }`,
+		"_remove_org_member", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetOrganization returns a single organization by id (gql only).
+func (c *AuthorizerAdminClient) GetOrganization(req *OrganizationRequest) (*Organization, error) {
+	var res Organization
+	if err := c.gqlOnly("GetOrganization",
+		"query organization($data: OrganizationRequest!) { _organization(params: $data) { "+adminOrgFields+" } }",
+		"_organization", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// Organizations returns a paginated list of organizations (gql only).
+func (c *AuthorizerAdminClient) Organizations(req *ListOrganizationsRequest) (*Organizations, error) {
+	var res Organizations
+	if err := c.gqlOnly("Organizations",
+		"query organizations($data: ListOrganizationsRequest) { _organizations(params: $data) { "+adminPaginationFields+" organizations { "+adminOrgFields+" } } }",
+		"_organizations", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// OrgMembers returns a paginated list of an organization's members (gql only).
+func (c *AuthorizerAdminClient) OrgMembers(req *ListOrgMembersRequest) (*OrgMembers, error) {
+	var res OrgMembers
+	if err := c.gqlOnly("OrgMembers",
+		"query orgMembers($data: ListOrgMembersRequest!) { _org_members(params: $data) { "+adminPaginationFields+" org_members { "+adminOrgMemberFields+" } } }",
+		"_org_members", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// OrgOIDCConnection defines an organization's upstream OIDC SSO connection.
+type OrgOIDCConnection struct {
+	ID          string  `json:"id"`
+	OrgID       string  `json:"org_id"`
+	Name        string  `json:"name"`
+	IssuerURL   string  `json:"issuer_url"`
+	SSOClientID string  `json:"sso_client_id"`
+	Scopes      *string `json:"scopes"`
+	RedirectURI *string `json:"redirect_uri"`
+	IsActive    bool    `json:"is_active"`
+	CreatedAt   int64   `json:"created_at"`
+	UpdatedAt   int64   `json:"updated_at"`
+}
+
+// CreateOrgOIDCConnectionRequest is the request for CreateOrgOIDCConnection.
+// ClientID/ClientSecret are the credentials Authorizer holds at the upstream
+// IdP; the secret is stored encrypted and never returned.
+type CreateOrgOIDCConnectionRequest struct {
+	OrgID        string  `json:"org_id"`
+	Name         string  `json:"name"`
+	IssuerURL    string  `json:"issuer_url"`
+	ClientID     string  `json:"client_id"`
+	ClientSecret string  `json:"client_secret"`
+	Scopes       *string `json:"scopes,omitempty"`
+	RedirectURI  *string `json:"redirect_uri,omitempty"`
+}
+
+// UpdateOrgOIDCConnectionRequest is the request for UpdateOrgOIDCConnection.
+// Supplying ClientSecret rotates it; omitting leaves the stored secret intact.
+type UpdateOrgOIDCConnectionRequest struct {
+	ID           string  `json:"id"`
+	Name         *string `json:"name,omitempty"`
+	IssuerURL    *string `json:"issuer_url,omitempty"`
+	ClientID     *string `json:"client_id,omitempty"`
+	ClientSecret *string `json:"client_secret,omitempty"`
+	Scopes       *string `json:"scopes,omitempty"`
+	RedirectURI  *string `json:"redirect_uri,omitempty"`
+	IsActive     *bool   `json:"is_active,omitempty"`
+}
+
+// OrgOIDCConnectionRequest looks a connection up by id OR by org id (supply
+// exactly one).
+type OrgOIDCConnectionRequest struct {
+	ID    *string `json:"id,omitempty"`
+	OrgID *string `json:"org_id,omitempty"`
+}
+
+// CreateOrgOIDCConnection creates an org OIDC SSO connection (gql only).
+func (c *AuthorizerAdminClient) CreateOrgOIDCConnection(req *CreateOrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
+	var res OrgOIDCConnection
+	if err := c.gqlOnly("CreateOrgOIDCConnection",
+		"mutation createOrgOidcConnection($data: CreateOrgOIDCConnectionRequest!) { _create_org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
+		"_create_org_oidc_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// UpdateOrgOIDCConnection updates an org OIDC SSO connection (gql only).
+func (c *AuthorizerAdminClient) UpdateOrgOIDCConnection(req *UpdateOrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
+	var res OrgOIDCConnection
+	if err := c.gqlOnly("UpdateOrgOIDCConnection",
+		"mutation updateOrgOidcConnection($data: UpdateOrgOIDCConnectionRequest!) { _update_org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
+		"_update_org_oidc_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// DeleteOrgOIDCConnection deletes an org OIDC SSO connection (gql only).
+// DESTRUCTIVE: SSO logins through this connection stop working immediately.
+func (c *AuthorizerAdminClient) DeleteOrgOIDCConnection(req *OrgOIDCConnectionRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("DeleteOrgOIDCConnection",
+		`mutation deleteOrgOidcConnection($data: OrgOIDCConnectionRequest!) { _delete_org_oidc_connection(params: $data) { message } }`,
+		"_delete_org_oidc_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetOrgOIDCConnection returns an org OIDC SSO connection by id or org id
+// (gql only).
+func (c *AuthorizerAdminClient) GetOrgOIDCConnection(req *OrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
+	var res OrgOIDCConnection
+	if err := c.gqlOnly("GetOrgOIDCConnection",
+		"query orgOidcConnection($data: OrgOIDCConnectionRequest!) { _org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
+		"_org_oidc_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// OrgSAMLConnection defines an organization's upstream SAML SSO connection.
+type OrgSAMLConnection struct {
+	ID                string  `json:"id"`
+	OrgID             string  `json:"org_id"`
+	Name              string  `json:"name"`
+	IdpEntityID       string  `json:"idp_entity_id"`
+	IdpSSOURL         *string `json:"idp_sso_url"`
+	SpEntityID        *string `json:"sp_entity_id"`
+	AcsURL            *string `json:"acs_url"`
+	AttributeMapping  *string `json:"attribute_mapping"`
+	AllowIdpInitiated bool    `json:"allow_idp_initiated"`
+	IsActive          bool    `json:"is_active"`
+	CreatedAt         int64   `json:"created_at"`
+	UpdatedAt         int64   `json:"updated_at"`
+}
+
+// CreateOrgSAMLConnectionRequest is the request for CreateOrgSAMLConnection.
+// IdpCertificate is the IdP X.509 signing certificate (PEM); assertion
+// signatures are validated only against it.
+type CreateOrgSAMLConnectionRequest struct {
+	OrgID             string  `json:"org_id"`
+	Name              string  `json:"name"`
+	IdpEntityID       string  `json:"idp_entity_id"`
+	IdpSSOURL         string  `json:"idp_sso_url"`
+	IdpCertificate    string  `json:"idp_certificate"`
+	SpEntityID        *string `json:"sp_entity_id,omitempty"`
+	AcsURL            *string `json:"acs_url,omitempty"`
+	AttributeMapping  *string `json:"attribute_mapping,omitempty"`
+	AllowIdpInitiated *bool   `json:"allow_idp_initiated,omitempty"`
+}
+
+// UpdateOrgSAMLConnectionRequest is the request for UpdateOrgSAMLConnection.
+// Supplying IdpCertificate replaces it; omitting leaves the stored cert intact.
+type UpdateOrgSAMLConnectionRequest struct {
+	ID                string  `json:"id"`
+	Name              *string `json:"name,omitempty"`
+	IdpEntityID       *string `json:"idp_entity_id,omitempty"`
+	IdpSSOURL         *string `json:"idp_sso_url,omitempty"`
+	IdpCertificate    *string `json:"idp_certificate,omitempty"`
+	SpEntityID        *string `json:"sp_entity_id,omitempty"`
+	AcsURL            *string `json:"acs_url,omitempty"`
+	AttributeMapping  *string `json:"attribute_mapping,omitempty"`
+	AllowIdpInitiated *bool   `json:"allow_idp_initiated,omitempty"`
+	IsActive          *bool   `json:"is_active,omitempty"`
+}
+
+// OrgSAMLConnectionRequest looks a connection up by id OR by org id (supply
+// exactly one).
+type OrgSAMLConnectionRequest struct {
+	ID    *string `json:"id,omitempty"`
+	OrgID *string `json:"org_id,omitempty"`
+}
+
+// CreateOrgSAMLConnection creates an org SAML SSO connection (gql only).
+func (c *AuthorizerAdminClient) CreateOrgSAMLConnection(req *CreateOrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
+	var res OrgSAMLConnection
+	if err := c.gqlOnly("CreateOrgSAMLConnection",
+		"mutation createOrgSamlConnection($data: CreateOrgSAMLConnectionRequest!) { _create_org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
+		"_create_org_saml_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// UpdateOrgSAMLConnection updates an org SAML SSO connection (gql only).
+func (c *AuthorizerAdminClient) UpdateOrgSAMLConnection(req *UpdateOrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
+	var res OrgSAMLConnection
+	if err := c.gqlOnly("UpdateOrgSAMLConnection",
+		"mutation updateOrgSamlConnection($data: UpdateOrgSAMLConnectionRequest!) { _update_org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
+		"_update_org_saml_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// DeleteOrgSAMLConnection deletes an org SAML SSO connection (gql only).
+// DESTRUCTIVE: SSO logins through this connection stop working immediately.
+func (c *AuthorizerAdminClient) DeleteOrgSAMLConnection(req *OrgSAMLConnectionRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("DeleteOrgSAMLConnection",
+		`mutation deleteOrgSamlConnection($data: OrgSAMLConnectionRequest!) { _delete_org_saml_connection(params: $data) { message } }`,
+		"_delete_org_saml_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetOrgSAMLConnection returns an org SAML SSO connection by id or org id
+// (gql only).
+func (c *AuthorizerAdminClient) GetOrgSAMLConnection(req *OrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
+	var res OrgSAMLConnection
+	if err := c.gqlOnly("GetOrgSAMLConnection",
+		"query orgSamlConnection($data: OrgSAMLConnectionRequest!) { _org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
+		"_org_saml_connection", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ScimEndpoint defines an organization's SCIM provisioning endpoint.
+type ScimEndpoint struct {
+	ID        string `json:"id"`
+	OrgID     string `json:"org_id"`
+	Enabled   bool   `json:"enabled"`
+	CreatedAt int64  `json:"created_at"`
+	UpdatedAt int64  `json:"updated_at"`
+}
+
+// CreateScimEndpointResponse carries the SCIM endpoint plus its bearer token.
+// The token is returned ONCE at creation and ONCE at rotation; it can never be
+// retrieved again.
+type CreateScimEndpointResponse struct {
+	ScimEndpoint *ScimEndpoint `json:"scim_endpoint"`
+	Token        string        `json:"token"`
+}
+
+// CreateScimEndpointRequest is the request for CreateScimEndpoint.
+type CreateScimEndpointRequest struct {
+	OrgID string `json:"org_id"`
+}
+
+// ScimEndpointRequest identifies an organization's SCIM endpoint by org id.
+type ScimEndpointRequest struct {
+	OrgID string `json:"org_id"`
+}
+
+// scimEndpointResponseFragment selects the SCIM endpoint + one-time token.
+const scimEndpointResponseFragment = "scim_endpoint { " + adminScimEndpointFields + " } token"
+
+// CreateScimEndpoint provisions a SCIM endpoint for an organization (gql only).
+func (c *AuthorizerAdminClient) CreateScimEndpoint(req *CreateScimEndpointRequest) (*CreateScimEndpointResponse, error) {
+	var res CreateScimEndpointResponse
+	if err := c.gqlOnly("CreateScimEndpoint",
+		"mutation createScimEndpoint($data: CreateScimEndpointRequest!) { _create_scim_endpoint(params: $data) { "+scimEndpointResponseFragment+" } }",
+		"_create_scim_endpoint", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// RotateScimToken rotates the SCIM endpoint's bearer token (gql only). The new
+// token is returned ONCE; the old token stops validating.
+func (c *AuthorizerAdminClient) RotateScimToken(req *ScimEndpointRequest) (*CreateScimEndpointResponse, error) {
+	var res CreateScimEndpointResponse
+	if err := c.gqlOnly("RotateScimToken",
+		"mutation rotateScimToken($data: ScimEndpointRequest!) { _rotate_scim_token(params: $data) { "+scimEndpointResponseFragment+" } }",
+		"_rotate_scim_token", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// DeleteScimEndpoint deletes an organization's SCIM endpoint (gql only).
+// DESTRUCTIVE: the IdP's provisioning token stops working immediately.
+func (c *AuthorizerAdminClient) DeleteScimEndpoint(req *ScimEndpointRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("DeleteScimEndpoint",
+		`mutation deleteScimEndpoint($data: ScimEndpointRequest!) { _delete_scim_endpoint(params: $data) { message } }`,
+		"_delete_scim_endpoint", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// GetScimEndpoint returns an organization's SCIM endpoint (gql only). The
+// bearer token is never returned.
+func (c *AuthorizerAdminClient) GetScimEndpoint(req *ScimEndpointRequest) (*ScimEndpoint, error) {
+	var res ScimEndpoint
+	if err := c.gqlOnly("GetScimEndpoint",
+		"query scimEndpoint($data: ScimEndpointRequest!) { _scim_endpoint(params: $data) { "+adminScimEndpointFields+" } }",
+		"_scim_endpoint", req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil

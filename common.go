@@ -9,6 +9,14 @@ const (
 	// GrantTypeRefreshToken is used for refresh_token grant type
 	GrantTypeRefreshToken = "refresh_token"
 
+	// GrantTypeClientCredentials is used for the client_credentials grant type
+	// (machine-to-machine tokens for registered clients / service accounts).
+	GrantTypeClientCredentials = "client_credentials"
+
+	// GrantTypeTokenExchange is the RFC 8693 token-exchange grant type
+	// (delegation / impersonation via subject_token + optional actor_token).
+	GrantTypeTokenExchange = "urn:ietf:params:oauth:grant-type:token-exchange"
+
 	// UserFragment defines graphql fragment for all the user attributes
 	UserFragment = `id email email_verified given_name family_name middle_name nickname preferred_username picture signup_methods gender birthdate phone_number phone_number_verified roles created_at updated_at is_multi_factor_auth_enabled app_data revoked_timestamp
 	`
