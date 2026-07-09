@@ -17,6 +17,9 @@ type GetTokenRequest struct {
 	Code         *string `json:"code"`
 	GrantType    *string `json:"grant_type"`
 	RefreshToken *string `json:"refresh_token"`
+	// CodeVerifier is the PKCE verifier for public clients using the
+	// authorization_code grant (RFC 7636).
+	CodeVerifier *string `json:"code_verifier"`
 	// ClientSecret authenticates confidential clients (client_credentials grant).
 	ClientSecret *string `json:"client_secret"`
 	// Scope is the space-delimited OAuth2 scope parameter (RFC 6749 §3.3).
@@ -61,6 +64,9 @@ type oauthError struct {
 // (OAuth endpoints stay REST regardless of the client's selected protocol).
 // It returns TokenResponse reference or error.
 func (c *AuthorizerClient) GetToken(req *GetTokenRequest) (*TokenResponse, error) {
+	if req == nil {
+		return nil, errors.New("request is required")
+	}
 	grantType := StringValue(req.GrantType)
 	if grantType == "" {
 		grantType = GrantTypeAuthorizationCode
@@ -82,6 +88,7 @@ func (c *AuthorizerClient) GetToken(req *GetTokenRequest) (*TokenResponse, error
 		}
 	}
 	setForm("code", req.Code)
+	setForm("code_verifier", req.CodeVerifier)
 	setForm("refresh_token", req.RefreshToken)
 	setForm("client_secret", req.ClientSecret)
 	setForm("scope", req.Scope)
