@@ -89,13 +89,51 @@ func TestAdminMetaProtocolAvailability(t *testing.T) {
 }
 
 // TestAdminGqlOnlyExtras verifies the gql-only methods error over rest+grpc.
+// This needs no live server: the unsupported-protocol error fires before any
+// network call.
 func TestAdminGqlOnlyExtras(t *testing.T) {
 	for _, p := range []authorizer.Protocol{authorizer.ProtocolREST, authorizer.ProtocolGRPC} {
 		c := adminClient(t, p)
-		if _, err := c.GenerateJWTKeys(&authorizer.GenerateJWTKeysRequest{Type: "HS256"}); err == nil {
-			t.Errorf("[%s] expected GenerateJWTKeys to error (gql-only)", p)
-		} else if !strings.Contains(err.Error(), "use graphql") {
-			t.Errorf("[%s] expected 'use graphql' hint, got %v", p, err)
+		gqlOnlyCalls := map[string]func() error{
+			"GenerateJWTKeys": func() error {
+				_, err := c.GenerateJWTKeys(&authorizer.GenerateJWTKeysRequest{Type: "HS256"})
+				return err
+			},
+			"CreateOrganization": func() error {
+				_, err := c.CreateOrganization(&authorizer.CreateOrganizationRequest{Name: "acme"})
+				return err
+			},
+			"Organizations": func() error {
+				_, err := c.Organizations(&authorizer.ListOrganizationsRequest{})
+				return err
+			},
+			"AddOrgMember": func() error {
+				_, err := c.AddOrgMember(&authorizer.AddOrgMemberRequest{OrgID: "o1", UserID: "u1"})
+				return err
+			},
+			"CreateOrgOIDCConnection": func() error {
+				_, err := c.CreateOrgOIDCConnection(&authorizer.CreateOrgOIDCConnectionRequest{OrgID: "o1"})
+				return err
+			},
+			"GetOrgSAMLConnection": func() error {
+				_, err := c.GetOrgSAMLConnection(&authorizer.OrgSAMLConnectionRequest{OrgID: authorizer.NewStringRef("o1")})
+				return err
+			},
+			"CreateScimEndpoint": func() error {
+				_, err := c.CreateScimEndpoint(&authorizer.CreateScimEndpointRequest{OrgID: "o1"})
+				return err
+			},
+			"RotateScimToken": func() error {
+				_, err := c.RotateScimToken(&authorizer.ScimEndpointRequest{OrgID: "o1"})
+				return err
+			},
+		}
+		for name, call := range gqlOnlyCalls {
+			if err := call(); err == nil {
+				t.Errorf("[%s] expected %s to error (gql-only)", p, name)
+			} else if !strings.Contains(err.Error(), "use graphql") {
+				t.Errorf("[%s] expected 'use graphql' hint from %s, got %v", p, name, err)
+			}
 		}
 	}
 }
