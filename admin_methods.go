@@ -31,16 +31,6 @@ const (
 	adminSamlIdpKeyFields    = `id org_id cert_pem algorithm status created_at updated_at`
 )
 
-// wrapPagination nests a proto PaginationRequest into the GraphQL
-// PaginatedRequest input shape ({pagination: {limit, page}}) used by the
-// ListClientsRequest / ListTrustedIssuersRequest inputs.
-func wrapPagination(p *authorizerv1.PaginationRequest) map[string]interface{} {
-	if p == nil {
-		return nil
-	}
-	return map[string]interface{}{"pagination": p}
-}
-
 // ---------------------------------------------------------------------------
 // 1. AdminLogin — establishes an admin session. grpc, rest, gql.
 // ---------------------------------------------------------------------------
@@ -251,8 +241,8 @@ func (c *AuthorizerAdminClient) VerificationRequests(req *authorizerv1.Verificat
 	err := c.execute(adminMethodSpec{
 		name: "VerificationRequests",
 		graphql: &GraphQLRequest{
-			Query:     "query verificationRequests($data: PaginatedRequest) { _verification_requests(params: $data) { " + adminPaginationFields + " verification_requests { " + adminVerifReqFields + " } } }",
-			Variables: map[string]interface{}{"data": req},
+			Query:     "query verificationRequests($data: PaginationRequest) { _verification_requests(params: $data) { " + adminPaginationFields + " verification_requests { " + adminVerifReqFields + " } } }",
+			Variables: map[string]interface{}{"data": req.GetPagination()},
 		},
 		graphqlField: "_verification_requests",
 		restMethod:   http.MethodPost,
@@ -468,8 +458,8 @@ func (c *AuthorizerAdminClient) Webhooks(req *authorizerv1.WebhooksRequest) (*au
 	err := c.execute(adminMethodSpec{
 		name: "Webhooks",
 		graphql: &GraphQLRequest{
-			Query:     "query webhooks($data: PaginatedRequest) { _webhooks(params: $data) { " + adminPaginationFields + " webhooks { " + adminWebhookFields + " } } }",
-			Variables: map[string]interface{}{"data": req},
+			Query:     "query webhooks($data: PaginationRequest) { _webhooks(params: $data) { " + adminPaginationFields + " webhooks { " + adminWebhookFields + " } } }",
+			Variables: map[string]interface{}{"data": req.GetPagination()},
 		},
 		graphqlField: "_webhooks",
 		restMethod:   http.MethodPost,
@@ -631,8 +621,8 @@ func (c *AuthorizerAdminClient) EmailTemplates(req *authorizerv1.EmailTemplatesR
 	err := c.execute(adminMethodSpec{
 		name: "EmailTemplates",
 		graphql: &GraphQLRequest{
-			Query:     "query emailTemplates($data: PaginatedRequest) { _email_templates(params: $data) { " + adminPaginationFields + " email_templates { " + adminEmailTplFields + " } } }",
-			Variables: map[string]interface{}{"data": req},
+			Query:     "query emailTemplates($data: PaginationRequest) { _email_templates(params: $data) { " + adminPaginationFields + " email_templates { " + adminEmailTplFields + " } } }",
+			Variables: map[string]interface{}{"data": req.GetPagination()},
 		},
 		graphqlField: "_email_templates",
 		restMethod:   http.MethodPost,
@@ -1031,12 +1021,9 @@ func (c *AuthorizerAdminClient) GetClient(req *authorizerv1.GetClientRequest) (*
 
 // Clients returns a paginated list of clients.
 func (c *AuthorizerAdminClient) Clients(req *authorizerv1.ClientsRequest) (*authorizerv1.ClientsResponse, error) {
-	// The GraphQL ListClientsRequest nests pagination one level deeper than the
-	// proto shape ({pagination: {pagination: {...}}}), so the variables are
-	// built explicitly instead of passing req through.
 	gqlData := map[string]interface{}{}
 	if req.GetPagination() != nil {
-		gqlData["pagination"] = wrapPagination(req.GetPagination())
+		gqlData["pagination"] = req.GetPagination()
 	}
 
 	var res authorizerv1.ClientsResponse
@@ -1180,11 +1167,9 @@ func (c *AuthorizerAdminClient) GetTrustedIssuer(req *authorizerv1.GetTrustedIss
 // TrustedIssuers returns a paginated list of trusted issuers, optionally
 // filtered by service account.
 func (c *AuthorizerAdminClient) TrustedIssuers(req *authorizerv1.TrustedIssuersRequest) (*authorizerv1.TrustedIssuersResponse, error) {
-	// The GraphQL ListTrustedIssuersRequest nests pagination one level deeper
-	// than the proto shape, so the variables are built explicitly.
 	gqlData := map[string]interface{}{}
 	if req.GetPagination() != nil {
-		gqlData["pagination"] = wrapPagination(req.GetPagination())
+		gqlData["pagination"] = req.GetPagination()
 	}
 	if req.ServiceAccountId != nil {
 		gqlData["service_account_id"] = req.GetServiceAccountId()
@@ -1331,11 +1316,9 @@ func (c *AuthorizerAdminClient) GetSamlServiceProvider(req *authorizerv1.GetSaml
 
 // ListSamlServiceProviders returns a paginated list of downstream SPs for an org.
 func (c *AuthorizerAdminClient) ListSamlServiceProviders(req *authorizerv1.ListSamlServiceProvidersRequest) (*authorizerv1.ListSamlServiceProvidersResponse, error) {
-	// The GraphQL ListSAMLServiceProvidersRequest nests pagination one level
-	// deeper than the proto shape, so the variables are built explicitly.
 	gqlData := map[string]interface{}{"org_id": req.GetOrgId()}
 	if req.GetPagination() != nil {
-		gqlData["pagination"] = wrapPagination(req.GetPagination())
+		gqlData["pagination"] = req.GetPagination()
 	}
 
 	var res authorizerv1.ListSamlServiceProvidersResponse
@@ -1577,11 +1560,6 @@ type PaginationRequest struct {
 	Page  int64 `json:"page,omitempty"`
 }
 
-// PaginatedRequest mirrors the GraphQL PaginatedRequest input.
-type PaginatedRequest struct {
-	Pagination *PaginationRequest `json:"pagination,omitempty"`
-}
-
 // Pagination mirrors the GraphQL Pagination response type.
 type Pagination struct {
 	Limit  int64 `json:"limit"`
@@ -1647,7 +1625,7 @@ type OrganizationRequest struct {
 
 // ListOrganizationsRequest is the request for Organizations.
 type ListOrganizationsRequest struct {
-	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
 }
 
 // AddOrgMemberRequest is the request for AddOrgMember. Roles defaults to an
@@ -1666,8 +1644,8 @@ type RemoveOrgMemberRequest struct {
 
 // ListOrgMembersRequest is the request for OrgMembers.
 type ListOrgMembersRequest struct {
-	OrgID      string            `json:"org_id"`
-	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+	OrgID      string             `json:"org_id"`
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
 }
 
 // CreateOrganization creates an organization (gql only).
@@ -2118,8 +2096,8 @@ type AddVerifiedOrgDomainRequest struct {
 
 // ListOrgDomainsRequest is the request for OrgDomains.
 type ListOrgDomainsRequest struct {
-	OrgID      string            `json:"org_id"`
-	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+	OrgID      string             `json:"org_id"`
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
 }
 
 // DeleteOrgDomainRequest is the request for DeleteOrgDomain.
