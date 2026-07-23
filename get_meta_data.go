@@ -30,6 +30,12 @@ type MetaDataResponse struct {
 	IsMultiFactorAuthEnabled           bool   `json:"is_multi_factor_auth_enabled"`
 	IsMobileBasicAuthenticationEnabled bool   `json:"is_mobile_basic_authentication_enabled"`
 	IsPhoneVerificationEnabled         bool   `json:"is_phone_verification_enabled"`
+	IsOrgDiscoveryEnabled              bool   `json:"is_org_discovery_enabled"`
+	IsTotpMfaEnabled                   bool   `json:"is_totp_mfa_enabled"`
+	IsEmailOtpMfaEnabled               bool   `json:"is_email_otp_mfa_enabled"`
+	IsSmsOtpMfaEnabled                 bool   `json:"is_sms_otp_mfa_enabled"`
+	IsWebauthnEnabled                  bool   `json:"is_webauthn_enabled"`
+	IsMfaEnforced                      bool   `json:"is_mfa_enforced"`
 }
 
 // GetMetaData is method attached to AuthorizerClient.
@@ -40,7 +46,7 @@ func (c *AuthorizerClient) GetMetaData() (*MetaDataResponse, error) {
 	err := c.execute(methodSpec{
 		name: "GetMetaData",
 		graphql: &GraphQLRequest{
-			Query:     `query { meta { version client_id is_google_login_enabled is_facebook_login_enabled is_github_login_enabled is_linkedin_login_enabled is_apple_login_enabled is_twitter_login_enabled is_discord_login_enabled is_microsoft_login_enabled is_twitch_login_enabled is_roblox_login_enabled is_email_verification_enabled is_basic_authentication_enabled is_magic_link_login_enabled is_sign_up_enabled is_strong_password_enabled is_multi_factor_auth_enabled is_mobile_basic_authentication_enabled is_phone_verification_enabled } }`,
+			Query:     `query { meta { version client_id is_google_login_enabled is_facebook_login_enabled is_github_login_enabled is_linkedin_login_enabled is_apple_login_enabled is_twitter_login_enabled is_discord_login_enabled is_microsoft_login_enabled is_twitch_login_enabled is_roblox_login_enabled is_email_verification_enabled is_basic_authentication_enabled is_magic_link_login_enabled is_sign_up_enabled is_strong_password_enabled is_multi_factor_auth_enabled is_mobile_basic_authentication_enabled is_phone_verification_enabled is_org_discovery_enabled is_totp_mfa_enabled is_email_otp_mfa_enabled is_sms_otp_mfa_enabled is_webauthn_enabled is_mfa_enforced } }`,
 			Variables: nil,
 		},
 		graphqlField: "meta",

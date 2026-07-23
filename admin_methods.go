@@ -20,13 +20,15 @@ const (
 	adminFgaModelFields   = `id dsl`
 	adminFgaTupleFields   = `user relation object`
 
-	adminClientFields        = `id name description allowed_scopes is_active created_at updated_at`
+	adminClientFields        = `id client_id name description allowed_scopes is_active created_at updated_at`
 	adminTrustedIssuerFields = `id service_account_id name issuer_url key_source_type jwks_url expected_aud subject_claim allowed_subjects issuer_type is_active spiffe_refresh_hint_seconds created_at updated_at`
 	adminOrgFields           = `id name display_name enabled created_at updated_at`
-	adminOrgMemberFields     = `id org_id user_id roles created_at updated_at`
+	adminOrgMemberFields     = `id org_id user_id email given_name family_name roles created_at updated_at`
 	adminOrgOIDCConnFields   = `id org_id name issuer_url sso_client_id scopes redirect_uri is_active created_at updated_at`
 	adminOrgSAMLConnFields   = `id org_id name idp_entity_id idp_sso_url sp_entity_id acs_url attribute_mapping allow_idp_initiated is_active created_at updated_at`
 	adminScimEndpointFields  = `id org_id enabled created_at updated_at`
+	adminSamlSPFields        = `id org_id name entity_id acs_url sp_cert_pem name_id_format mapped_attributes allow_idp_initiated is_active created_at updated_at`
+	adminSamlIdpKeyFields    = `id org_id cert_pem algorithm status created_at updated_at`
 )
 
 // wrapPagination nests a proto PaginationRequest into the GraphQL
@@ -141,7 +143,7 @@ func (c *AuthorizerAdminClient) Users(req *authorizerv1.UsersRequest) (*authoriz
 	err := c.execute(adminMethodSpec{
 		name: "Users",
 		graphql: &GraphQLRequest{
-			Query:     "query users($data: PaginatedRequest) { _users(params: $data) { " + adminPaginationFields + " users { " + adminUserFields + " } } }",
+			Query:     "query users($data: ListUsersRequest) { _users(params: $data) { " + adminPaginationFields + " users { " + adminUserFields + " } } }",
 			Variables: map[string]interface{}{"data": req},
 		},
 		graphqlField: "_users",
@@ -1210,6 +1212,271 @@ func (c *AuthorizerAdminClient) TrustedIssuers(req *authorizerv1.TrustedIssuersR
 }
 
 // ---------------------------------------------------------------------------
+// 44. CreateSamlServiceProvider — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// CreateSamlServiceProvider registers a downstream SAML 2.0 SP that Authorizer
+// (acting as the IdP) issues signed assertions to.
+func (c *AuthorizerAdminClient) CreateSamlServiceProvider(req *authorizerv1.CreateSamlServiceProviderRequest) (*authorizerv1.CreateSamlServiceProviderResponse, error) {
+	var res authorizerv1.CreateSamlServiceProviderResponse
+	err := c.execute(adminMethodSpec{
+		name: "CreateSamlServiceProvider",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createSamlServiceProvider($data: CreateSAMLServiceProviderRequest!) { _create_saml_service_provider(params: $data) { " + adminSamlSPFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_create_saml_service_provider",
+		graphqlWrap:  "saml_service_provider",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/create_saml_service_provider",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateSamlServiceProvider(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 45. UpdateSamlServiceProvider — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// UpdateSamlServiceProvider updates a downstream SP's name, endpoints,
+// certificate, attribute mapping, or active state.
+func (c *AuthorizerAdminClient) UpdateSamlServiceProvider(req *authorizerv1.UpdateSamlServiceProviderRequest) (*authorizerv1.UpdateSamlServiceProviderResponse, error) {
+	var res authorizerv1.UpdateSamlServiceProviderResponse
+	err := c.execute(adminMethodSpec{
+		name: "UpdateSamlServiceProvider",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateSamlServiceProvider($data: UpdateSAMLServiceProviderRequest!) { _update_saml_service_provider(params: $data) { " + adminSamlSPFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_update_saml_service_provider",
+		graphqlWrap:  "saml_service_provider",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/update_saml_service_provider",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateSamlServiceProvider(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 46. DeleteSamlServiceProvider — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// DeleteSamlServiceProvider deletes a downstream SP by id. DESTRUCTIVE: SSO
+// assertions to this SP stop being issued immediately.
+func (c *AuthorizerAdminClient) DeleteSamlServiceProvider(req *authorizerv1.DeleteSamlServiceProviderRequest) (*authorizerv1.DeleteSamlServiceProviderResponse, error) {
+	var res authorizerv1.DeleteSamlServiceProviderResponse
+	err := c.execute(adminMethodSpec{
+		name: "DeleteSamlServiceProvider",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteSamlServiceProvider($data: SAMLServiceProviderRequest!) { _delete_saml_service_provider(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_saml_service_provider",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_saml_service_provider",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteSamlServiceProvider(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 47. GetSamlServiceProvider — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// GetSamlServiceProvider returns a single downstream SP by id.
+func (c *AuthorizerAdminClient) GetSamlServiceProvider(req *authorizerv1.GetSamlServiceProviderRequest) (*authorizerv1.GetSamlServiceProviderResponse, error) {
+	var res authorizerv1.GetSamlServiceProviderResponse
+	err := c.execute(adminMethodSpec{
+		name: "GetSamlServiceProvider",
+		graphql: &GraphQLRequest{
+			Query:     "query samlServiceProvider($data: SAMLServiceProviderRequest!) { _saml_service_provider(params: $data) { " + adminSamlSPFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_saml_service_provider",
+		graphqlWrap:  "saml_service_provider",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/saml_service_provider",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetSamlServiceProvider(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 48. ListSamlServiceProviders — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// ListSamlServiceProviders returns a paginated list of downstream SPs for an org.
+func (c *AuthorizerAdminClient) ListSamlServiceProviders(req *authorizerv1.ListSamlServiceProvidersRequest) (*authorizerv1.ListSamlServiceProvidersResponse, error) {
+	// The GraphQL ListSAMLServiceProvidersRequest nests pagination one level
+	// deeper than the proto shape, so the variables are built explicitly.
+	gqlData := map[string]interface{}{"org_id": req.GetOrgId()}
+	if req.GetPagination() != nil {
+		gqlData["pagination"] = wrapPagination(req.GetPagination())
+	}
+
+	var res authorizerv1.ListSamlServiceProvidersResponse
+	err := c.execute(adminMethodSpec{
+		name: "ListSamlServiceProviders",
+		graphql: &GraphQLRequest{
+			Query:     "query listSamlServiceProviders($data: ListSAMLServiceProvidersRequest!) { _list_saml_service_providers(params: $data) { " + adminPaginationFields + " saml_service_providers { " + adminSamlSPFields + " } } }",
+			Variables: map[string]interface{}{"data": gqlData},
+		},
+		graphqlField: "_list_saml_service_providers",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/saml_service_providers",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.ListSamlServiceProviders(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 49. RotateSamlIdpCert — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// RotateSamlIdpCert generates a new current signing keypair for an org's SAML
+// IdP, demoting the previous current key.
+func (c *AuthorizerAdminClient) RotateSamlIdpCert(req *authorizerv1.RotateSamlIdpCertRequest) (*authorizerv1.RotateSamlIdpCertResponse, error) {
+	var res authorizerv1.RotateSamlIdpCertResponse
+	err := c.execute(adminMethodSpec{
+		name: "RotateSamlIdpCert",
+		graphql: &GraphQLRequest{
+			Query:     "mutation rotateSamlIdpCert($data: RotateSAMLIDPCertRequest!) { _rotate_saml_idp_cert(params: $data) { " + adminSamlIdpKeyFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_rotate_saml_idp_cert",
+		graphqlWrap:  "saml_idp_key",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/rotate_saml_idp_cert",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RotateSamlIdpCert(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 50. RetireSamlIdpKey — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// RetireSamlIdpKey retires a published-but-not-signing SAML IdP key by id.
+// DESTRUCTIVE: the key stops being published in IdP metadata.
+func (c *AuthorizerAdminClient) RetireSamlIdpKey(req *authorizerv1.RetireSamlIdpKeyRequest) (*authorizerv1.RetireSamlIdpKeyResponse, error) {
+	var res authorizerv1.RetireSamlIdpKeyResponse
+	err := c.execute(adminMethodSpec{
+		name: "RetireSamlIdpKey",
+		graphql: &GraphQLRequest{
+			Query:     `mutation retireSamlIdpKey($data: RetireSAMLIDPKeyRequest!) { _retire_saml_idp_key(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_retire_saml_idp_key",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/retire_saml_idp_key",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RetireSamlIdpKey(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 51. ListSamlIdpKeys — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// ListSamlIdpKeys returns all SAML IdP signing keys for an org.
+func (c *AuthorizerAdminClient) ListSamlIdpKeys(req *authorizerv1.ListSamlIdpKeysRequest) (*authorizerv1.ListSamlIdpKeysResponse, error) {
+	var res authorizerv1.ListSamlIdpKeysResponse
+	err := c.execute(adminMethodSpec{
+		name: "ListSamlIdpKeys",
+		graphql: &GraphQLRequest{
+			Query:     "query listSamlIdpKeys($data: ListSAMLIDPKeysRequest!) { _list_saml_idp_keys(params: $data) { " + adminSamlIdpKeyFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_list_saml_idp_keys",
+		// The GraphQL query returns a bare array; wrap it to match the proto's
+		// {saml_idp_keys: [...]} response shape.
+		graphqlWrap: "saml_idp_keys",
+		restMethod:  http.MethodPost,
+		restPath:    "/v1/admin/saml_idp_keys",
+		restBody:    req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.ListSamlIdpKeys(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// 52. ImportSamlSpMetadata — grpc, rest, gql.
+// ---------------------------------------------------------------------------
+
+// ImportSamlSpMetadata parses pasted SP metadata XML and returns the fields to
+// prefill a create call. It does NOT create a record and performs no remote
+// fetch.
+func (c *AuthorizerAdminClient) ImportSamlSpMetadata(req *authorizerv1.ImportSamlSpMetadataRequest) (*authorizerv1.ImportSamlSpMetadataResponse, error) {
+	var res authorizerv1.ImportSamlSpMetadataResponse
+	err := c.execute(adminMethodSpec{
+		name: "ImportSamlSpMetadata",
+		graphql: &GraphQLRequest{
+			Query:     `mutation importSamlSpMetadata($data: ImportSAMLSPMetadataRequest!) { _import_saml_sp_metadata(params: $data) { entity_id acs_url certificate } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_import_saml_sp_metadata",
+		graphqlWrap:  "result",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/import_saml_sp_metadata",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.ImportSamlSpMetadata(ctx, req)
+		},
+	}, &res)
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
 // GraphQL-only admin operations. These have no gRPC stub or REST endpoint, so
 // only the graphql protocol is supported. The proto definitions do not include
 // these operations, so local request/response types are declared here.
@@ -1341,12 +1608,15 @@ type Organizations struct {
 
 // OrgMember defines a user's membership in an organization.
 type OrgMember struct {
-	ID        string   `json:"id"`
-	OrgID     string   `json:"org_id"`
-	UserID    string   `json:"user_id"`
-	Roles     []string `json:"roles"`
-	CreatedAt int64    `json:"created_at"`
-	UpdatedAt int64    `json:"updated_at"`
+	ID         string   `json:"id"`
+	OrgID      string   `json:"org_id"`
+	UserID     string   `json:"user_id"`
+	Email      *string  `json:"email"`
+	GivenName  *string  `json:"given_name"`
+	FamilyName *string  `json:"family_name"`
+	Roles      []string `json:"roles"`
+	CreatedAt  int64    `json:"created_at"`
+	UpdatedAt  int64    `json:"updated_at"`
 }
 
 // OrgMembers is a paginated list of organization members.
@@ -1753,6 +2023,167 @@ func (c *AuthorizerAdminClient) GetScimEndpoint(req *ScimEndpointRequest) (*Scim
 	if err := c.gqlOnly("GetScimEndpoint",
 		"query scimEndpoint($data: ScimEndpointRequest!) { _scim_endpoint(params: $data) { "+adminScimEndpointFields+" } }",
 		"_scim_endpoint", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// UserOrganizations — a user's organizations plus their per-org roles. The
+// admin proto has no RPC for this, so only graphql is supported.
+// ---------------------------------------------------------------------------
+
+// UserOrganization pairs an organization with the roles a user holds in it.
+type UserOrganization struct {
+	Organization *Organization `json:"organization"`
+	Roles        []string      `json:"roles"`
+}
+
+// UserOrganizations is a paginated list of a user's organizations.
+type UserOrganizations struct {
+	Pagination        *Pagination         `json:"pagination"`
+	UserOrganizations []*UserOrganization `json:"user_organizations"`
+}
+
+// UserOrganizationsRequest is the request for UserOrganizations.
+type UserOrganizationsRequest struct {
+	UserID     string             `json:"user_id"`
+	Pagination *PaginationRequest `json:"pagination,omitempty"`
+}
+
+const adminUserOrgFields = `organization { ` + adminOrgFields + ` } roles`
+
+// UserOrganizations returns the organizations a user belongs to, with the
+// roles held per org (gql only).
+func (c *AuthorizerAdminClient) UserOrganizations(req *UserOrganizationsRequest) (*UserOrganizations, error) {
+	var res UserOrganizations
+	if err := c.gqlOnly("UserOrganizations",
+		"query userOrganizations($data: UserOrganizationsRequest!) { _user_organizations(params: $data) { "+adminPaginationFields+" user_organizations { "+adminUserOrgFields+" } } }",
+		"_user_organizations", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// ---------------------------------------------------------------------------
+// Org domains (home-realm discovery). The admin proto has no RPCs for these,
+// so only graphql is supported. request/verify/delete are org-admin gated;
+// AddVerifiedOrgDomain is super-admin only (trusted-assert, bypasses the DNS
+// TXT challenge).
+// ---------------------------------------------------------------------------
+
+// OrgDomain is a verified mapping from a DNS domain to exactly one organization,
+// used for home-realm discovery.
+type OrgDomain struct {
+	Domain     string `json:"domain"`
+	OrgID      string `json:"org_id"`
+	VerifiedAt *int64 `json:"verified_at"`
+	CreatedAt  *int64 `json:"created_at"`
+	UpdatedAt  *int64 `json:"updated_at"`
+}
+
+// OrgDomains is a paginated list of an organization's verified domains.
+type OrgDomains struct {
+	Pagination *Pagination  `json:"pagination"`
+	OrgDomains []*OrgDomain `json:"org_domains"`
+}
+
+// OrgDomainChallenge is the DNS TXT record a tenant must publish to prove
+// control of a domain. Returned by RequestOrgDomain; no durable row exists
+// until the domain is verified.
+type OrgDomainChallenge struct {
+	Domain      string `json:"domain"`
+	RecordType  string `json:"record_type"`
+	RecordName  string `json:"record_name"`
+	RecordValue string `json:"record_value"`
+}
+
+// RequestOrgDomainRequest is the request for RequestOrgDomain.
+type RequestOrgDomainRequest struct {
+	OrgID  string `json:"org_id"`
+	Domain string `json:"domain"`
+}
+
+// VerifyOrgDomainRequest is the request for VerifyOrgDomain.
+type VerifyOrgDomainRequest struct {
+	OrgID  string `json:"org_id"`
+	Domain string `json:"domain"`
+}
+
+// AddVerifiedOrgDomainRequest is the request for AddVerifiedOrgDomain.
+type AddVerifiedOrgDomainRequest struct {
+	OrgID  string `json:"org_id"`
+	Domain string `json:"domain"`
+}
+
+// ListOrgDomainsRequest is the request for OrgDomains.
+type ListOrgDomainsRequest struct {
+	OrgID      string            `json:"org_id"`
+	Pagination *PaginatedRequest `json:"pagination,omitempty"`
+}
+
+// DeleteOrgDomainRequest is the request for DeleteOrgDomain.
+type DeleteOrgDomainRequest struct {
+	Domain string `json:"domain"`
+}
+
+const adminOrgDomainFields = `domain org_id verified_at created_at updated_at`
+
+// RequestOrgDomain starts domain verification for home-realm discovery,
+// returning the DNS TXT record the tenant must publish to prove control of
+// the domain (gql only).
+func (c *AuthorizerAdminClient) RequestOrgDomain(req *RequestOrgDomainRequest) (*OrgDomainChallenge, error) {
+	var res OrgDomainChallenge
+	if err := c.gqlOnly("RequestOrgDomain",
+		`mutation requestOrgDomain($data: RequestOrgDomainRequest!) { _request_org_domain(params: $data) { domain record_type record_name record_value } }`,
+		"_request_org_domain", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// VerifyOrgDomain checks the DNS TXT challenge and, if satisfied, verifies the
+// domain (gql only).
+func (c *AuthorizerAdminClient) VerifyOrgDomain(req *VerifyOrgDomainRequest) (*OrgDomain, error) {
+	var res OrgDomain
+	if err := c.gqlOnly("VerifyOrgDomain",
+		"mutation verifyOrgDomain($data: VerifyOrgDomainRequest!) { _verify_org_domain(params: $data) { "+adminOrgDomainFields+" } }",
+		"_verify_org_domain", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// AddVerifiedOrgDomain directly registers a verified domain, bypassing the DNS
+// TXT challenge. Super-admin only (gql only).
+func (c *AuthorizerAdminClient) AddVerifiedOrgDomain(req *AddVerifiedOrgDomainRequest) (*OrgDomain, error) {
+	var res OrgDomain
+	if err := c.gqlOnly("AddVerifiedOrgDomain",
+		"mutation addVerifiedOrgDomain($data: AddVerifiedOrgDomainRequest!) { _add_verified_org_domain(params: $data) { "+adminOrgDomainFields+" } }",
+		"_add_verified_org_domain", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// DeleteOrgDomain removes a verified domain (gql only). DESTRUCTIVE: logins
+// relying on this domain for home-realm discovery stop resolving to the org.
+func (c *AuthorizerAdminClient) DeleteOrgDomain(req *DeleteOrgDomainRequest) (*Response, error) {
+	var res Response
+	if err := c.gqlOnly("DeleteOrgDomain",
+		`mutation deleteOrgDomain($data: DeleteOrgDomainRequest!) { _delete_org_domain(params: $data) { message } }`,
+		"_delete_org_domain", req, &res); err != nil {
+		return nil, err
+	}
+	return &res, nil
+}
+
+// OrgDomains returns an organization's verified domains (gql only).
+func (c *AuthorizerAdminClient) OrgDomains(req *ListOrgDomainsRequest) (*OrgDomains, error) {
+	var res OrgDomains
+	if err := c.gqlOnly("OrgDomains",
+		"query orgDomains($data: ListOrgDomainsRequest!) { _org_domains(params: $data) { "+adminPaginationFields+" org_domains { "+adminOrgDomainFields+" } } }",
+		"_org_domains", req, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil

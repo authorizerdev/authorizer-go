@@ -17,7 +17,7 @@ type UpdateProfileRequest struct {
 	GivenName                *string                `json:"given_name,omitempty"`
 	FamilyName               *string                `json:"family_name,omitempty"`
 	MiddleName               *string                `json:"middle_name,omitempty"`
-	NickName                 *string                `json:"nick_name,omitempty"`
+	NickName                 *string                `json:"nickname,omitempty"`
 	Picture                  *string                `json:"picture,omitempty"`
 	Gender                   *string                `json:"gender,omitempty"`
 	BirthDate                *string                `json:"birthdate,omitempty"`
