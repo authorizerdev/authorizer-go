@@ -5,7 +5,7 @@
 # 2. Run tests: make test
 
 # Docker image for authorizer server
-AUTHORIZER_IMAGE := quay.io/authorizer/authorizer:2.3.0
+AUTHORIZER_IMAGE := quay.io/authorizer/authorizer:2.4.0-rc.7
 AUTHORIZER_CONTAINER := authorizer-test
 
 .PHONY: docker-up docker-down test
@@ -30,6 +30,7 @@ docker-up:
 			--client-id=123456 \
 			--client-secret=secret \
 			--grpc-insecure=true \
+			--disable-mfa \
 			--rate-limit-rps=10000 \
 			--rate-limit-burst=10000; \
 		echo "Waiting for authorizer to be ready..."; \

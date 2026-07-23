@@ -10,24 +10,28 @@ import (
 )
 
 // SignUpRequest defines attributes for signup request
+//
+// is_multi_factor_auth_enabled is intentionally NOT a field here: the server
+// removed it from SignUpRequest (security fix — letting a signup caller
+// self-enable/disable MFA enforcement was an auth bypass). Use UpdateProfile
+// or the admin UpdateUser API to change a user's MFA enrollment after signup.
 type SignUpRequest struct {
-	Email                    *string                `json:"email,omitempty"`
-	Password                 string                 `json:"password"`
-	ConfirmPassword          string                 `json:"confirm_password"`
-	GivenName                *string                `json:"given_name,omitempty"`
-	FamilyName               *string                `json:"family_name,omitempty"`
-	MiddleName               *string                `json:"middle_name,omitempty"`
-	NickName                 *string                `json:"nick_name,omitempty"`
-	Picture                  *string                `json:"picture,omitempty"`
-	Gender                   *string                `json:"gender,omitempty"`
-	BirthDate                *string                `json:"birthdate,omitempty"`
-	PhoneNumber              *string                `json:"phone_number,omitempty"`
-	Roles                    []*string              `json:"roles,omitempty"`
-	Scope                    []*string              `json:"scope,omitempty"`
-	RedirectURI              *string                `json:"redirect_uri,omitempty"`
-	IsMultiFactorAuthEnabled *bool                  `json:"is_multi_factor_auth_enabled,omitempty"`
-	AppData                  map[string]interface{} `json:"app_data,omitempty"`
-	State                    *string                `json:"state,omitempty"`
+	Email           *string                `json:"email,omitempty"`
+	Password        string                 `json:"password"`
+	ConfirmPassword string                 `json:"confirm_password"`
+	GivenName       *string                `json:"given_name,omitempty"`
+	FamilyName      *string                `json:"family_name,omitempty"`
+	MiddleName      *string                `json:"middle_name,omitempty"`
+	NickName        *string                `json:"nickname,omitempty"`
+	Picture         *string                `json:"picture,omitempty"`
+	Gender          *string                `json:"gender,omitempty"`
+	BirthDate       *string                `json:"birthdate,omitempty"`
+	PhoneNumber     *string                `json:"phone_number,omitempty"`
+	Roles           []*string              `json:"roles,omitempty"`
+	Scope           []*string              `json:"scope,omitempty"`
+	RedirectURI     *string                `json:"redirect_uri,omitempty"`
+	AppData         map[string]interface{} `json:"app_data,omitempty"`
+	State           *string                `json:"state,omitempty"`
 }
 
 // SignUpInput is deprecated: Use SignUpRequest instead
