@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 

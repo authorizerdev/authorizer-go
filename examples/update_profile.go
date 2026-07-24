@@ -3,7 +3,7 @@ package examples
 import (
 	"fmt"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // UpdateProfileExample demonstrates how to use UpdateProfile function of authorizer sdk

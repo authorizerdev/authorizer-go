@@ -3,7 +3,7 @@ package examples
 import (
 	"fmt"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // ResendVerifyEmailExample demonstrates how to use ResendVerifyEmail function of authorizer sdk

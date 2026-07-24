@@ -3,7 +3,7 @@ package examples
 import (
 	"fmt"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // ResetPasswordExample demonstrates how to use ResetPassword function of authorizer sdk

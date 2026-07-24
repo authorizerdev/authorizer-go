@@ -1,6 +1,6 @@
 package main
 
-import "github.com/authorizerdev/authorizer-go/examples"
+import "github.com/authorizerdev/authorizer-go/v2/examples"
 
 func main() {
 	// examples.LoginExample()

@@ -1,4 +1,4 @@
-module github.com/authorizerdev/authorizer-go
+module github.com/authorizerdev/authorizer-go/v2
 
 go 1.25.5
 

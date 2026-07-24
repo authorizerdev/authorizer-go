@@ -3,7 +3,7 @@ package examples
 import (
 	"fmt"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // SignUpExample demonstrates how to use SignUp function of authorizer sdk

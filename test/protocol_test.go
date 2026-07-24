@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // protocols is the set of wire transports the public client supports. Each
