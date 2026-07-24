@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/authorizerdev/authorizer-go"
+	"github.com/authorizerdev/authorizer-go/v2"
 )
 
 // Integration-test target. Overridable via env so the same suite runs against a
