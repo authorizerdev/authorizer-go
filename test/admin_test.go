@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go"
-	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 
 const adminSecret = "admin"

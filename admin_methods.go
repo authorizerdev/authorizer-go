@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	authorizerv1 "github.com/authorizerdev/authorizer-go/internal/genpb/authorizer/v1"
+	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 
 // GraphQL selection-set fragments for the admin response types. Kept here so
