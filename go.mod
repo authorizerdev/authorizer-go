@@ -3,7 +3,7 @@ module github.com/authorizerdev/authorizer-go/v2
 go 1.25.5
 
 require (
-	github.com/authorizerdev/authorizer-proto-go v0.1.0
+	github.com/authorizerdev/authorizer-proto-go v0.2.0-rc.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
 )

@@ -66,31 +66,34 @@ func TestAdminUsersAcrossProtocols(t *testing.T) {
 	}
 }
 
-// TestAdminMetaProtocolAvailability verifies AdminMeta works over rest+grpc and
-// returns a clear error over graphql (which has no _admin_meta-shaped op here).
+// TestAdminMetaProtocolAvailability verifies AdminMeta works over every
+// protocol. It was rest+grpc-only in the SDK despite `_admin_meta` existing on
+// the server; the SDK simply carried no query for it.
 func TestAdminMetaProtocolAvailability(t *testing.T) {
-	// rest + grpc: supported
-	for _, p := range []authorizer.Protocol{authorizer.ProtocolREST, authorizer.ProtocolGRPC} {
+	for _, p := range []authorizer.Protocol{authorizer.ProtocolGraphQL, authorizer.ProtocolREST, authorizer.ProtocolGRPC} {
 		c := adminClient(t, p)
-		if _, err := c.AdminMeta(); err != nil {
+		res, err := c.AdminMeta()
+		if err != nil {
 			t.Fatalf("[%s] AdminMeta failed: %v", p, err)
 		}
-	}
-
-	// graphql: unsupported → clear error, no network 404
-	c := adminClient(t, authorizer.ProtocolGraphQL)
-	_, err := c.AdminMeta()
-	if err == nil {
-		t.Fatal("expected AdminMeta to error over graphql")
-	}
-	if !strings.Contains(err.Error(), "not available over graphql") {
-		t.Errorf("expected clear unsupported-protocol error, got %v", err)
+		// The proto response nests the payload under admin_meta while the
+		// GraphQL op returns it directly, so a missing graphqlWrap surfaces
+		// here as a zero-valued response rather than an error.
+		if res.GetAdminMeta() == nil || len(res.GetAdminMeta().GetRoles()) == 0 {
+			t.Errorf("[%s] AdminMeta returned %+v, want roles populated", p, res)
+		}
 	}
 }
 
 // TestAdminGqlOnlyExtras verifies the gql-only methods error over rest+grpc.
 // This needs no live server: the unsupported-protocol error fires before any
 // network call.
+//
+// Only three admin operations remain graphql-only: _admin_signup, _update_env
+// and _generate_jwt_keys have no proto RPC. Organizations, org members, org
+// domains, org OIDC/SAML connections and SCIM endpoints DID once belong here,
+// and gained RPCs plus REST bindings in server 2.4.0 -- they are now exercised
+// over every protocol by TestAdminOrgSurfaceAcrossProtocols instead.
 func TestAdminGqlOnlyExtras(t *testing.T) {
 	for _, p := range []authorizer.Protocol{authorizer.ProtocolREST, authorizer.ProtocolGRPC} {
 		c := adminClient(t, p)
@@ -99,32 +102,8 @@ func TestAdminGqlOnlyExtras(t *testing.T) {
 				_, err := c.GenerateJWTKeys(&authorizer.GenerateJWTKeysRequest{Type: "HS256"})
 				return err
 			},
-			"CreateOrganization": func() error {
-				_, err := c.CreateOrganization(&authorizer.CreateOrganizationRequest{Name: "acme"})
-				return err
-			},
-			"Organizations": func() error {
-				_, err := c.Organizations(&authorizer.ListOrganizationsRequest{})
-				return err
-			},
-			"AddOrgMember": func() error {
-				_, err := c.AddOrgMember(&authorizer.AddOrgMemberRequest{OrgID: "o1", UserID: "u1"})
-				return err
-			},
-			"CreateOrgOIDCConnection": func() error {
-				_, err := c.CreateOrgOIDCConnection(&authorizer.CreateOrgOIDCConnectionRequest{OrgID: "o1"})
-				return err
-			},
-			"GetOrgSAMLConnection": func() error {
-				_, err := c.GetOrgSAMLConnection(&authorizer.OrgSAMLConnectionRequest{OrgID: authorizer.NewStringRef("o1")})
-				return err
-			},
-			"CreateScimEndpoint": func() error {
-				_, err := c.CreateScimEndpoint(&authorizer.CreateScimEndpointRequest{OrgID: "o1"})
-				return err
-			},
-			"RotateScimToken": func() error {
-				_, err := c.RotateScimToken(&authorizer.ScimEndpointRequest{OrgID: "o1"})
+			"UpdateEnv": func() error {
+				_, err := c.UpdateEnv(&authorizer.UpdateEnvRequest{})
 				return err
 			},
 		}
