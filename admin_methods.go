@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 
+	"google.golang.org/protobuf/proto"
+
 	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 
@@ -66,10 +68,14 @@ func (c *AuthorizerAdminClient) AdminLogin(req *authorizerv1.AdminLoginRequest) 
 func (c *AuthorizerAdminClient) AdminLogout() (*authorizerv1.AdminLogoutResponse, error) {
 	var res authorizerv1.AdminLogoutResponse
 	err := c.execute(adminMethodSpec{
-		name:       "AdminLogout",
-		restMethod: http.MethodPost,
-		restPath:   "/v1/admin/logout",
-		restBody:   &authorizerv1.AdminLogoutRequest{},
+		name: "AdminLogout",
+		graphql: &GraphQLRequest{
+			Query: `mutation adminLogout { _admin_logout { message } }`,
+		},
+		graphqlField: "_admin_logout",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/logout",
+		restBody:     &authorizerv1.AdminLogoutRequest{},
 		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
 			return cli.AdminLogout(ctx, &authorizerv1.AdminLogoutRequest{})
 		},
@@ -88,9 +94,13 @@ func (c *AuthorizerAdminClient) AdminLogout() (*authorizerv1.AdminLogoutResponse
 func (c *AuthorizerAdminClient) AdminSession() (*authorizerv1.AdminSessionResponse, error) {
 	var res authorizerv1.AdminSessionResponse
 	err := c.execute(adminMethodSpec{
-		name:       "AdminSession",
-		restMethod: http.MethodGet,
-		restPath:   "/v1/admin/session",
+		name: "AdminSession",
+		graphql: &GraphQLRequest{
+			Query: `query adminSession { _admin_session { message } }`,
+		},
+		graphqlField: "_admin_session",
+		restMethod:   http.MethodGet,
+		restPath:     "/v1/admin/session",
 		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
 			return cli.AdminSession(ctx, &authorizerv1.AdminSessionRequest{})
 		},
@@ -110,9 +120,14 @@ func (c *AuthorizerAdminClient) AdminSession() (*authorizerv1.AdminSessionRespon
 func (c *AuthorizerAdminClient) AdminMeta() (*authorizerv1.AdminMetaResponse, error) {
 	var res authorizerv1.AdminMetaResponse
 	err := c.execute(adminMethodSpec{
-		name:       "AdminMeta",
-		restMethod: http.MethodGet,
-		restPath:   "/v1/admin/meta",
+		name: "AdminMeta",
+		graphql: &GraphQLRequest{
+			Query: `query adminMeta { _admin_meta { roles default_roles protected_roles is_multi_factor_auth_service_enabled } }`,
+		},
+		graphqlField: "_admin_meta",
+		graphqlWrap:  "admin_meta",
+		restMethod:   http.MethodGet,
+		restPath:     "/v1/admin/meta",
 		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
 			return cli.AdminMeta(ctx, &authorizerv1.AdminMetaRequest{})
 		},
@@ -673,9 +688,14 @@ func (c *AuthorizerAdminClient) AuditLogs(req *authorizerv1.AuditLogsRequest) (*
 func (c *AuthorizerAdminClient) FgaGetModel() (*authorizerv1.FgaGetModelResponse, error) {
 	var res authorizerv1.FgaGetModelResponse
 	err := c.execute(adminMethodSpec{
-		name:       "FgaGetModel",
-		restMethod: http.MethodGet,
-		restPath:   "/v1/admin/fga/model",
+		name: "FgaGetModel",
+		graphql: &GraphQLRequest{
+			Query: `query adminFgaGetModel { _fga_get_model { id dsl } }`,
+		},
+		graphqlField: "_fga_get_model",
+		graphqlWrap:  "model",
+		restMethod:   http.MethodGet,
+		restPath:     "/v1/admin/fga/model",
 		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
 			return cli.FgaGetModel(ctx, &authorizerv1.FgaGetModelRequest{})
 		},
@@ -859,10 +879,14 @@ func (c *AuthorizerAdminClient) FgaExpand(req *authorizerv1.FgaExpandRequest) (*
 func (c *AuthorizerAdminClient) FgaReset() (*authorizerv1.FgaResetResponse, error) {
 	var res authorizerv1.FgaResetResponse
 	err := c.execute(adminMethodSpec{
-		name:       "FgaReset",
-		restMethod: http.MethodPost,
-		restPath:   "/v1/admin/fga/reset",
-		restBody:   &authorizerv1.FgaResetRequest{},
+		name: "FgaReset",
+		graphql: &GraphQLRequest{
+			Query: `mutation adminFgaReset { _fga_reset { message } }`,
+		},
+		graphqlField: "_fga_reset",
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/fga/reset",
+		restBody:     &authorizerv1.FgaResetRequest{},
 		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
 			return cli.FgaReset(ctx, &authorizerv1.FgaResetRequest{})
 		},
@@ -1542,18 +1566,6 @@ func (c *AuthorizerAdminClient) GenerateJWTKeys(req *GenerateJWTKeysRequest) (*G
 // clear unsupported-protocol error. Types mirror the GraphQL schema.
 // ---------------------------------------------------------------------------
 
-// gqlOnly runs a graphql-only admin operation (no REST path, no gRPC stub).
-func (c *AuthorizerAdminClient) gqlOnly(name, query, field string, req, out interface{}) error {
-	return c.execute(adminMethodSpec{
-		name: name,
-		graphql: &GraphQLRequest{
-			Query:     query,
-			Variables: map[string]interface{}{"data": req},
-		},
-		graphqlField: field,
-	}, out)
-}
-
 // PaginationRequest mirrors the GraphQL PaginationRequest input.
 type PaginationRequest struct {
 	Limit int64 `json:"limit,omitempty"`
@@ -1651,9 +1663,25 @@ type ListOrgMembersRequest struct {
 // CreateOrganization creates an organization (gql only).
 func (c *AuthorizerAdminClient) CreateOrganization(req *CreateOrganizationRequest) (*Organization, error) {
 	var res Organization
-	if err := c.gqlOnly("CreateOrganization",
-		"mutation createOrganization($data: CreateOrganizationRequest!) { _create_organization(params: $data) { "+adminOrgFields+" } }",
-		"_create_organization", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "CreateOrganization",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createOrganization($data: CreateOrganizationRequest!) { _create_organization(params: $data) { " + adminOrgFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_create_organization",
+		responseUnwrap: "organization",
+		restResponse:   func() proto.Message { return &authorizerv1.CreateOrganizationResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/create_organization",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateOrganization(ctx, &authorizerv1.CreateOrganizationRequest{
+				Name: req.GetName(), DisplayName: req.GetDisplayName(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1662,9 +1690,25 @@ func (c *AuthorizerAdminClient) CreateOrganization(req *CreateOrganizationReques
 // UpdateOrganization updates an organization (gql only).
 func (c *AuthorizerAdminClient) UpdateOrganization(req *UpdateOrganizationRequest) (*Organization, error) {
 	var res Organization
-	if err := c.gqlOnly("UpdateOrganization",
-		"mutation updateOrganization($data: UpdateOrganizationRequest!) { _update_organization(params: $data) { "+adminOrgFields+" } }",
-		"_update_organization", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "UpdateOrganization",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateOrganization($data: UpdateOrganizationRequest!) { _update_organization(params: $data) { " + adminOrgFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_update_organization",
+		responseUnwrap: "organization",
+		restResponse:   func() proto.Message { return &authorizerv1.UpdateOrganizationResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/update_organization",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateOrganization(ctx, &authorizerv1.UpdateOrganizationRequest{
+				Id: req.GetID(), Name: req.GetName(), DisplayName: req.GetDisplayName(), Enabled: req.GetEnabled(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1674,9 +1718,22 @@ func (c *AuthorizerAdminClient) UpdateOrganization(req *UpdateOrganizationReques
 // permanently removes the organization and its memberships/connections.
 func (c *AuthorizerAdminClient) DeleteOrganization(req *OrganizationRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("DeleteOrganization",
-		`mutation deleteOrganization($data: OrganizationRequest!) { _delete_organization(params: $data) { message } }`,
-		"_delete_organization", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "DeleteOrganization",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteOrganization($data: OrganizationRequest!) { _delete_organization(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_organization",
+		restResponse: func() proto.Message { return &authorizerv1.DeleteOrganizationResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_organization",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteOrganization(ctx, &authorizerv1.DeleteOrganizationRequest{Id: req.GetID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1685,9 +1742,25 @@ func (c *AuthorizerAdminClient) DeleteOrganization(req *OrganizationRequest) (*R
 // AddOrgMember adds a user to an organization (gql only).
 func (c *AuthorizerAdminClient) AddOrgMember(req *AddOrgMemberRequest) (*OrgMember, error) {
 	var res OrgMember
-	if err := c.gqlOnly("AddOrgMember",
-		"mutation addOrgMember($data: AddOrgMemberRequest!) { _add_org_member(params: $data) { "+adminOrgMemberFields+" } }",
-		"_add_org_member", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "AddOrgMember",
+		graphql: &GraphQLRequest{
+			Query:     "mutation addOrgMember($data: AddOrgMemberRequest!) { _add_org_member(params: $data) { " + adminOrgMemberFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_add_org_member",
+		responseUnwrap: "org_member",
+		restResponse:   func() proto.Message { return &authorizerv1.AddOrgMemberResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/add_org_member",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.AddOrgMember(ctx, &authorizerv1.AddOrgMemberRequest{
+				OrgId: req.GetOrgID(), UserId: req.GetUserID(), Roles: req.GetRoles(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1696,9 +1769,22 @@ func (c *AuthorizerAdminClient) AddOrgMember(req *AddOrgMemberRequest) (*OrgMemb
 // RemoveOrgMember removes a user from an organization (gql only).
 func (c *AuthorizerAdminClient) RemoveOrgMember(req *RemoveOrgMemberRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("RemoveOrgMember",
-		`mutation removeOrgMember($data: RemoveOrgMemberRequest!) { _remove_org_member(params: $data) { message } }`,
-		"_remove_org_member", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "RemoveOrgMember",
+		graphql: &GraphQLRequest{
+			Query:     `mutation removeOrgMember($data: RemoveOrgMemberRequest!) { _remove_org_member(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_remove_org_member",
+		restResponse: func() proto.Message { return &authorizerv1.RemoveOrgMemberResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/remove_org_member",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RemoveOrgMember(ctx, &authorizerv1.RemoveOrgMemberRequest{OrgId: req.GetOrgID(), UserId: req.GetUserID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1707,9 +1793,23 @@ func (c *AuthorizerAdminClient) RemoveOrgMember(req *RemoveOrgMemberRequest) (*R
 // GetOrganization returns a single organization by id (gql only).
 func (c *AuthorizerAdminClient) GetOrganization(req *OrganizationRequest) (*Organization, error) {
 	var res Organization
-	if err := c.gqlOnly("GetOrganization",
-		"query organization($data: OrganizationRequest!) { _organization(params: $data) { "+adminOrgFields+" } }",
-		"_organization", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "GetOrganization",
+		graphql: &GraphQLRequest{
+			Query:     "query organization($data: OrganizationRequest!) { _organization(params: $data) { " + adminOrgFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_organization",
+		responseUnwrap: "organization",
+		restResponse:   func() proto.Message { return &authorizerv1.GetOrganizationResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/organization",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetOrganization(ctx, &authorizerv1.GetOrganizationRequest{Id: req.GetID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1718,9 +1818,22 @@ func (c *AuthorizerAdminClient) GetOrganization(req *OrganizationRequest) (*Orga
 // Organizations returns a paginated list of organizations (gql only).
 func (c *AuthorizerAdminClient) Organizations(req *ListOrganizationsRequest) (*Organizations, error) {
 	var res Organizations
-	if err := c.gqlOnly("Organizations",
-		"query organizations($data: ListOrganizationsRequest) { _organizations(params: $data) { "+adminPaginationFields+" organizations { "+adminOrgFields+" } } }",
-		"_organizations", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "Organizations",
+		graphql: &GraphQLRequest{
+			Query:     "query organizations($data: ListOrganizationsRequest) { _organizations(params: $data) { " + adminPaginationFields + " organizations { " + adminOrgFields + " } } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_organizations",
+		restResponse: func() proto.Message { return &authorizerv1.OrganizationsResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/organizations",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.Organizations(ctx, &authorizerv1.OrganizationsRequest{Pagination: req.protoPagination()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1729,9 +1842,22 @@ func (c *AuthorizerAdminClient) Organizations(req *ListOrganizationsRequest) (*O
 // OrgMembers returns a paginated list of an organization's members (gql only).
 func (c *AuthorizerAdminClient) OrgMembers(req *ListOrgMembersRequest) (*OrgMembers, error) {
 	var res OrgMembers
-	if err := c.gqlOnly("OrgMembers",
-		"query orgMembers($data: ListOrgMembersRequest!) { _org_members(params: $data) { "+adminPaginationFields+" org_members { "+adminOrgMemberFields+" } } }",
-		"_org_members", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "OrgMembers",
+		graphql: &GraphQLRequest{
+			Query:     "query orgMembers($data: ListOrgMembersRequest!) { _org_members(params: $data) { " + adminPaginationFields + " org_members { " + adminOrgMemberFields + " } } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_org_members",
+		restResponse: func() proto.Message { return &authorizerv1.OrgMembersResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/org_members",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.OrgMembers(ctx, &authorizerv1.OrgMembersRequest{OrgId: req.GetOrgID(), Pagination: req.protoPagination()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1787,9 +1913,27 @@ type OrgOIDCConnectionRequest struct {
 // CreateOrgOIDCConnection creates an org OIDC SSO connection (gql only).
 func (c *AuthorizerAdminClient) CreateOrgOIDCConnection(req *CreateOrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
 	var res OrgOIDCConnection
-	if err := c.gqlOnly("CreateOrgOIDCConnection",
-		"mutation createOrgOidcConnection($data: CreateOrgOIDCConnectionRequest!) { _create_org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
-		"_create_org_oidc_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "CreateOrgOIDCConnection",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createOrgOidcConnection($data: CreateOrgOIDCConnectionRequest!) { _create_org_oidc_connection(params: $data) { " + adminOrgOIDCConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_create_org_oidc_connection",
+		responseUnwrap: "org_oidc_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.CreateOrgOidcConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/create_org_oidc_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateOrgOidcConnection(ctx, &authorizerv1.CreateOrgOidcConnectionRequest{
+				OrgId: req.GetOrgID(), Name: req.GetName(), IssuerUrl: req.GetIssuerURL(),
+				ClientId: req.GetClientID(), ClientSecret: req.GetClientSecret(),
+				Scopes: req.GetScopes(), RedirectUri: req.GetRedirectURI(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1798,9 +1942,27 @@ func (c *AuthorizerAdminClient) CreateOrgOIDCConnection(req *CreateOrgOIDCConnec
 // UpdateOrgOIDCConnection updates an org OIDC SSO connection (gql only).
 func (c *AuthorizerAdminClient) UpdateOrgOIDCConnection(req *UpdateOrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
 	var res OrgOIDCConnection
-	if err := c.gqlOnly("UpdateOrgOIDCConnection",
-		"mutation updateOrgOidcConnection($data: UpdateOrgOIDCConnectionRequest!) { _update_org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
-		"_update_org_oidc_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "UpdateOrgOIDCConnection",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateOrgOidcConnection($data: UpdateOrgOIDCConnectionRequest!) { _update_org_oidc_connection(params: $data) { " + adminOrgOIDCConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_update_org_oidc_connection",
+		responseUnwrap: "org_oidc_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.UpdateOrgOidcConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/update_org_oidc_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateOrgOidcConnection(ctx, &authorizerv1.UpdateOrgOidcConnectionRequest{
+				Id: req.GetID(), Name: req.GetName(), IssuerUrl: req.GetIssuerURL(),
+				ClientId: req.GetClientID(), ClientSecret: req.GetClientSecret(),
+				Scopes: req.GetScopes(), RedirectUri: req.GetRedirectURI(), IsActive: req.GetIsActive(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1810,9 +1972,22 @@ func (c *AuthorizerAdminClient) UpdateOrgOIDCConnection(req *UpdateOrgOIDCConnec
 // DESTRUCTIVE: SSO logins through this connection stop working immediately.
 func (c *AuthorizerAdminClient) DeleteOrgOIDCConnection(req *OrgOIDCConnectionRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("DeleteOrgOIDCConnection",
-		`mutation deleteOrgOidcConnection($data: OrgOIDCConnectionRequest!) { _delete_org_oidc_connection(params: $data) { message } }`,
-		"_delete_org_oidc_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "DeleteOrgOIDCConnection",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteOrgOidcConnection($data: OrgOIDCConnectionRequest!) { _delete_org_oidc_connection(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_org_oidc_connection",
+		restResponse: func() proto.Message { return &authorizerv1.DeleteOrgOidcConnectionResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_org_oidc_connection",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteOrgOidcConnection(ctx, &authorizerv1.DeleteOrgOidcConnectionRequest{Id: req.GetID(), OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1822,9 +1997,23 @@ func (c *AuthorizerAdminClient) DeleteOrgOIDCConnection(req *OrgOIDCConnectionRe
 // (gql only).
 func (c *AuthorizerAdminClient) GetOrgOIDCConnection(req *OrgOIDCConnectionRequest) (*OrgOIDCConnection, error) {
 	var res OrgOIDCConnection
-	if err := c.gqlOnly("GetOrgOIDCConnection",
-		"query orgOidcConnection($data: OrgOIDCConnectionRequest!) { _org_oidc_connection(params: $data) { "+adminOrgOIDCConnFields+" } }",
-		"_org_oidc_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "GetOrgOIDCConnection",
+		graphql: &GraphQLRequest{
+			Query:     "query orgOidcConnection($data: OrgOIDCConnectionRequest!) { _org_oidc_connection(params: $data) { " + adminOrgOIDCConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_org_oidc_connection",
+		responseUnwrap: "org_oidc_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.GetOrgOidcConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/org_oidc_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetOrgOidcConnection(ctx, &authorizerv1.GetOrgOidcConnectionRequest{Id: req.GetID(), OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1886,9 +2075,28 @@ type OrgSAMLConnectionRequest struct {
 // CreateOrgSAMLConnection creates an org SAML SSO connection (gql only).
 func (c *AuthorizerAdminClient) CreateOrgSAMLConnection(req *CreateOrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
 	var res OrgSAMLConnection
-	if err := c.gqlOnly("CreateOrgSAMLConnection",
-		"mutation createOrgSamlConnection($data: CreateOrgSAMLConnectionRequest!) { _create_org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
-		"_create_org_saml_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "CreateOrgSAMLConnection",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createOrgSamlConnection($data: CreateOrgSAMLConnectionRequest!) { _create_org_saml_connection(params: $data) { " + adminOrgSAMLConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_create_org_saml_connection",
+		responseUnwrap: "org_saml_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.CreateOrgSamlConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/create_org_saml_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateOrgSamlConnection(ctx, &authorizerv1.CreateOrgSamlConnectionRequest{
+				OrgId: req.GetOrgID(), Name: req.GetName(), IdpEntityId: req.GetIdpEntityID(),
+				IdpSsoUrl: req.GetIdpSSOURL(), IdpCertificate: req.GetIdpCertificate(),
+				SpEntityId: req.GetSpEntityID(), AcsUrl: req.GetAcsURL(),
+				AttributeMapping: req.GetAttributeMapping(), AllowIdpInitiated: req.GetAllowIdpInitiated(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1897,9 +2105,29 @@ func (c *AuthorizerAdminClient) CreateOrgSAMLConnection(req *CreateOrgSAMLConnec
 // UpdateOrgSAMLConnection updates an org SAML SSO connection (gql only).
 func (c *AuthorizerAdminClient) UpdateOrgSAMLConnection(req *UpdateOrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
 	var res OrgSAMLConnection
-	if err := c.gqlOnly("UpdateOrgSAMLConnection",
-		"mutation updateOrgSamlConnection($data: UpdateOrgSAMLConnectionRequest!) { _update_org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
-		"_update_org_saml_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "UpdateOrgSAMLConnection",
+		graphql: &GraphQLRequest{
+			Query:     "mutation updateOrgSamlConnection($data: UpdateOrgSAMLConnectionRequest!) { _update_org_saml_connection(params: $data) { " + adminOrgSAMLConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_update_org_saml_connection",
+		responseUnwrap: "org_saml_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.UpdateOrgSamlConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/update_org_saml_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UpdateOrgSamlConnection(ctx, &authorizerv1.UpdateOrgSamlConnectionRequest{
+				Id: req.GetID(), Name: req.GetName(), IdpEntityId: req.GetIdpEntityID(),
+				IdpSsoUrl: req.GetIdpSSOURL(), IdpCertificate: req.GetIdpCertificate(),
+				SpEntityId: req.GetSpEntityID(), AcsUrl: req.GetAcsURL(),
+				AttributeMapping: req.GetAttributeMapping(), AllowIdpInitiated: req.GetAllowIdpInitiated(),
+				IsActive: req.GetIsActive(),
+			})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1909,9 +2137,22 @@ func (c *AuthorizerAdminClient) UpdateOrgSAMLConnection(req *UpdateOrgSAMLConnec
 // DESTRUCTIVE: SSO logins through this connection stop working immediately.
 func (c *AuthorizerAdminClient) DeleteOrgSAMLConnection(req *OrgSAMLConnectionRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("DeleteOrgSAMLConnection",
-		`mutation deleteOrgSamlConnection($data: OrgSAMLConnectionRequest!) { _delete_org_saml_connection(params: $data) { message } }`,
-		"_delete_org_saml_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "DeleteOrgSAMLConnection",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteOrgSamlConnection($data: OrgSAMLConnectionRequest!) { _delete_org_saml_connection(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_org_saml_connection",
+		restResponse: func() proto.Message { return &authorizerv1.DeleteOrgSamlConnectionResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_org_saml_connection",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteOrgSamlConnection(ctx, &authorizerv1.DeleteOrgSamlConnectionRequest{Id: req.GetID(), OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1921,9 +2162,23 @@ func (c *AuthorizerAdminClient) DeleteOrgSAMLConnection(req *OrgSAMLConnectionRe
 // (gql only).
 func (c *AuthorizerAdminClient) GetOrgSAMLConnection(req *OrgSAMLConnectionRequest) (*OrgSAMLConnection, error) {
 	var res OrgSAMLConnection
-	if err := c.gqlOnly("GetOrgSAMLConnection",
-		"query orgSamlConnection($data: OrgSAMLConnectionRequest!) { _org_saml_connection(params: $data) { "+adminOrgSAMLConnFields+" } }",
-		"_org_saml_connection", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "GetOrgSAMLConnection",
+		graphql: &GraphQLRequest{
+			Query:     "query orgSamlConnection($data: OrgSAMLConnectionRequest!) { _org_saml_connection(params: $data) { " + adminOrgSAMLConnFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_org_saml_connection",
+		responseUnwrap: "org_saml_connection",
+		restResponse:   func() proto.Message { return &authorizerv1.GetOrgSamlConnectionResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/org_saml_connection",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetOrgSamlConnection(ctx, &authorizerv1.GetOrgSamlConnectionRequest{Id: req.GetID(), OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1962,9 +2217,22 @@ const scimEndpointResponseFragment = "scim_endpoint { " + adminScimEndpointField
 // CreateScimEndpoint provisions a SCIM endpoint for an organization (gql only).
 func (c *AuthorizerAdminClient) CreateScimEndpoint(req *CreateScimEndpointRequest) (*CreateScimEndpointResponse, error) {
 	var res CreateScimEndpointResponse
-	if err := c.gqlOnly("CreateScimEndpoint",
-		"mutation createScimEndpoint($data: CreateScimEndpointRequest!) { _create_scim_endpoint(params: $data) { "+scimEndpointResponseFragment+" } }",
-		"_create_scim_endpoint", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "CreateScimEndpoint",
+		graphql: &GraphQLRequest{
+			Query:     "mutation createScimEndpoint($data: CreateScimEndpointRequest!) { _create_scim_endpoint(params: $data) { " + scimEndpointResponseFragment + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_create_scim_endpoint",
+		restResponse: func() proto.Message { return &authorizerv1.CreateScimEndpointResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/create_scim_endpoint",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.CreateScimEndpoint(ctx, &authorizerv1.CreateScimEndpointRequest{OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1974,9 +2242,22 @@ func (c *AuthorizerAdminClient) CreateScimEndpoint(req *CreateScimEndpointReques
 // token is returned ONCE; the old token stops validating.
 func (c *AuthorizerAdminClient) RotateScimToken(req *ScimEndpointRequest) (*CreateScimEndpointResponse, error) {
 	var res CreateScimEndpointResponse
-	if err := c.gqlOnly("RotateScimToken",
-		"mutation rotateScimToken($data: ScimEndpointRequest!) { _rotate_scim_token(params: $data) { "+scimEndpointResponseFragment+" } }",
-		"_rotate_scim_token", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "RotateScimToken",
+		graphql: &GraphQLRequest{
+			Query:     "mutation rotateScimToken($data: ScimEndpointRequest!) { _rotate_scim_token(params: $data) { " + scimEndpointResponseFragment + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_rotate_scim_token",
+		restResponse: func() proto.Message { return &authorizerv1.CreateScimEndpointResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/rotate_scim_token",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RotateScimToken(ctx, &authorizerv1.RotateScimTokenRequest{OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1986,9 +2267,22 @@ func (c *AuthorizerAdminClient) RotateScimToken(req *ScimEndpointRequest) (*Crea
 // DESTRUCTIVE: the IdP's provisioning token stops working immediately.
 func (c *AuthorizerAdminClient) DeleteScimEndpoint(req *ScimEndpointRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("DeleteScimEndpoint",
-		`mutation deleteScimEndpoint($data: ScimEndpointRequest!) { _delete_scim_endpoint(params: $data) { message } }`,
-		"_delete_scim_endpoint", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "DeleteScimEndpoint",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteScimEndpoint($data: ScimEndpointRequest!) { _delete_scim_endpoint(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_scim_endpoint",
+		restResponse: func() proto.Message { return &authorizerv1.DeleteScimEndpointResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_scim_endpoint",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteScimEndpoint(ctx, &authorizerv1.DeleteScimEndpointRequest{OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -1998,9 +2292,23 @@ func (c *AuthorizerAdminClient) DeleteScimEndpoint(req *ScimEndpointRequest) (*R
 // bearer token is never returned.
 func (c *AuthorizerAdminClient) GetScimEndpoint(req *ScimEndpointRequest) (*ScimEndpoint, error) {
 	var res ScimEndpoint
-	if err := c.gqlOnly("GetScimEndpoint",
-		"query scimEndpoint($data: ScimEndpointRequest!) { _scim_endpoint(params: $data) { "+adminScimEndpointFields+" } }",
-		"_scim_endpoint", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "GetScimEndpoint",
+		graphql: &GraphQLRequest{
+			Query:     "query scimEndpoint($data: ScimEndpointRequest!) { _scim_endpoint(params: $data) { " + adminScimEndpointFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_scim_endpoint",
+		responseUnwrap: "scim_endpoint",
+		restResponse:   func() proto.Message { return &authorizerv1.GetScimEndpointResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/scim_endpoint",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.GetScimEndpoint(ctx, &authorizerv1.GetScimEndpointRequest{OrgId: req.GetOrgID()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2035,9 +2343,22 @@ const adminUserOrgFields = `organization { ` + adminOrgFields + ` } roles`
 // roles held per org (gql only).
 func (c *AuthorizerAdminClient) UserOrganizations(req *UserOrganizationsRequest) (*UserOrganizations, error) {
 	var res UserOrganizations
-	if err := c.gqlOnly("UserOrganizations",
-		"query userOrganizations($data: UserOrganizationsRequest!) { _user_organizations(params: $data) { "+adminPaginationFields+" user_organizations { "+adminUserOrgFields+" } } }",
-		"_user_organizations", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "UserOrganizations",
+		graphql: &GraphQLRequest{
+			Query:     "query userOrganizations($data: UserOrganizationsRequest!) { _user_organizations(params: $data) { " + adminPaginationFields + " user_organizations { " + adminUserOrgFields + " } } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_user_organizations",
+		restResponse: func() proto.Message { return &authorizerv1.UserOrganizationsResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/user_organizations",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.UserOrganizations(ctx, &authorizerv1.UserOrganizationsRequest{UserId: req.GetUserID(), Pagination: req.protoPagination()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2112,9 +2433,23 @@ const adminOrgDomainFields = `domain org_id verified_at created_at updated_at`
 // the domain (gql only).
 func (c *AuthorizerAdminClient) RequestOrgDomain(req *RequestOrgDomainRequest) (*OrgDomainChallenge, error) {
 	var res OrgDomainChallenge
-	if err := c.gqlOnly("RequestOrgDomain",
-		`mutation requestOrgDomain($data: RequestOrgDomainRequest!) { _request_org_domain(params: $data) { domain record_type record_name record_value } }`,
-		"_request_org_domain", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "RequestOrgDomain",
+		graphql: &GraphQLRequest{
+			Query:     `mutation requestOrgDomain($data: RequestOrgDomainRequest!) { _request_org_domain(params: $data) { domain record_type record_name record_value } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_request_org_domain",
+		responseUnwrap: "challenge",
+		restResponse:   func() proto.Message { return &authorizerv1.RequestOrgDomainResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/request_org_domain",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.RequestOrgDomain(ctx, &authorizerv1.RequestOrgDomainRequest{OrgId: req.GetOrgID(), Domain: req.GetDomain()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2124,9 +2459,23 @@ func (c *AuthorizerAdminClient) RequestOrgDomain(req *RequestOrgDomainRequest) (
 // domain (gql only).
 func (c *AuthorizerAdminClient) VerifyOrgDomain(req *VerifyOrgDomainRequest) (*OrgDomain, error) {
 	var res OrgDomain
-	if err := c.gqlOnly("VerifyOrgDomain",
-		"mutation verifyOrgDomain($data: VerifyOrgDomainRequest!) { _verify_org_domain(params: $data) { "+adminOrgDomainFields+" } }",
-		"_verify_org_domain", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "VerifyOrgDomain",
+		graphql: &GraphQLRequest{
+			Query:     "mutation verifyOrgDomain($data: VerifyOrgDomainRequest!) { _verify_org_domain(params: $data) { " + adminOrgDomainFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_verify_org_domain",
+		responseUnwrap: "org_domain",
+		restResponse:   func() proto.Message { return &authorizerv1.VerifyOrgDomainResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/verify_org_domain",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.VerifyOrgDomain(ctx, &authorizerv1.VerifyOrgDomainRequest{OrgId: req.GetOrgID(), Domain: req.GetDomain()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2136,9 +2485,23 @@ func (c *AuthorizerAdminClient) VerifyOrgDomain(req *VerifyOrgDomainRequest) (*O
 // TXT challenge. Super-admin only (gql only).
 func (c *AuthorizerAdminClient) AddVerifiedOrgDomain(req *AddVerifiedOrgDomainRequest) (*OrgDomain, error) {
 	var res OrgDomain
-	if err := c.gqlOnly("AddVerifiedOrgDomain",
-		"mutation addVerifiedOrgDomain($data: AddVerifiedOrgDomainRequest!) { _add_verified_org_domain(params: $data) { "+adminOrgDomainFields+" } }",
-		"_add_verified_org_domain", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "AddVerifiedOrgDomain",
+		graphql: &GraphQLRequest{
+			Query:     "mutation addVerifiedOrgDomain($data: AddVerifiedOrgDomainRequest!) { _add_verified_org_domain(params: $data) { " + adminOrgDomainFields + " } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField:   "_add_verified_org_domain",
+		responseUnwrap: "org_domain",
+		restResponse:   func() proto.Message { return &authorizerv1.AddVerifiedOrgDomainResponse{} },
+		restMethod:     http.MethodPost,
+		restPath:       "/v1/admin/add_verified_org_domain",
+		restBody:       req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.AddVerifiedOrgDomain(ctx, &authorizerv1.AddVerifiedOrgDomainRequest{OrgId: req.GetOrgID(), Domain: req.GetDomain()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2148,9 +2511,22 @@ func (c *AuthorizerAdminClient) AddVerifiedOrgDomain(req *AddVerifiedOrgDomainRe
 // relying on this domain for home-realm discovery stop resolving to the org.
 func (c *AuthorizerAdminClient) DeleteOrgDomain(req *DeleteOrgDomainRequest) (*Response, error) {
 	var res Response
-	if err := c.gqlOnly("DeleteOrgDomain",
-		`mutation deleteOrgDomain($data: DeleteOrgDomainRequest!) { _delete_org_domain(params: $data) { message } }`,
-		"_delete_org_domain", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "DeleteOrgDomain",
+		graphql: &GraphQLRequest{
+			Query:     `mutation deleteOrgDomain($data: DeleteOrgDomainRequest!) { _delete_org_domain(params: $data) { message } }`,
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_delete_org_domain",
+		restResponse: func() proto.Message { return &authorizerv1.DeleteOrgDomainResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/delete_org_domain",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.DeleteOrgDomain(ctx, &authorizerv1.DeleteOrgDomainRequest{Domain: req.GetDomain()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -2159,9 +2535,22 @@ func (c *AuthorizerAdminClient) DeleteOrgDomain(req *DeleteOrgDomainRequest) (*R
 // OrgDomains returns an organization's verified domains (gql only).
 func (c *AuthorizerAdminClient) OrgDomains(req *ListOrgDomainsRequest) (*OrgDomains, error) {
 	var res OrgDomains
-	if err := c.gqlOnly("OrgDomains",
-		"query orgDomains($data: ListOrgDomainsRequest!) { _org_domains(params: $data) { "+adminPaginationFields+" org_domains { "+adminOrgDomainFields+" } } }",
-		"_org_domains", req, &res); err != nil {
+	err := c.execute(adminMethodSpec{
+		name: "OrgDomains",
+		graphql: &GraphQLRequest{
+			Query:     "query orgDomains($data: ListOrgDomainsRequest!) { _org_domains(params: $data) { " + adminPaginationFields + " org_domains { " + adminOrgDomainFields + " } } }",
+			Variables: map[string]interface{}{"data": req},
+		},
+		graphqlField: "_org_domains",
+		restResponse: func() proto.Message { return &authorizerv1.OrgDomainsResponse{} },
+		restMethod:   http.MethodPost,
+		restPath:     "/v1/admin/org_domains",
+		restBody:     req,
+		grpcCall: func(ctx context.Context, cli authorizerv1.AuthorizerAdminServiceClient) (interface{}, error) {
+			return cli.OrgDomains(ctx, &authorizerv1.OrgDomainsRequest{OrgId: req.GetOrgID(), Pagination: req.protoPagination()})
+		},
+	}, &res)
+	if err != nil {
 		return nil, err
 	}
 	return &res, nil

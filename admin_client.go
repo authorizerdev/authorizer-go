@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"google.golang.org/protobuf/proto"
+
 	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 
@@ -92,6 +94,22 @@ type adminMethodSpec struct {
 	// it (e.g. _update_client returns Client, proto UpdateClientResponse{client}).
 	graphqlWrap string
 
+	// responseUnwrap is the dual of graphqlWrap, for methods whose out is the
+	// bare domain object rather than the proto response message: it names the
+	// single field to unwrap from the REST/gRPC response before unmarshalling.
+	// Used by the organization / org SSO / SCIM / org domain methods, whose
+	// hand-written signatures predate the proto (server 2.4.0 added the RPCs)
+	// and are kept so adding the transports is not a breaking change.
+	// Leave empty when the response is read whole (a message, or a paginated
+	// list the domain type already mirrors).
+	responseUnwrap string
+
+	// restResponse builds the proto response message the REST body is decoded
+	// into, for methods whose out is a hand-written domain type rather than the
+	// proto message itself. grpc-gateway emits int64 as a JSON string, which
+	// doREST only handles for proto.Message targets (via protojson).
+	restResponse func() proto.Message
+
 	// restMethod / restPath; empty restPath means rest-unsupported.
 	restMethod string
 	restPath   string
@@ -131,6 +149,13 @@ func (c *AuthorizerAdminClient) execute(spec adminMethodSpec, out interface{}) e
 		if spec.restPath == "" {
 			return unsupportedProtocol(spec.name, c.Protocol, spec.supported())
 		}
+		if spec.restResponse != nil {
+			msg := spec.restResponse()
+			if err := doREST(c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, msg); err != nil {
+				return err
+			}
+			return unwrapProto(msg, spec.responseUnwrap, out)
+		}
 		return doREST(c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, out)
 
 	case ProtocolGRPC:
@@ -149,7 +174,7 @@ func (c *AuthorizerAdminClient) execute(spec adminMethodSpec, out interface{}) e
 		if err != nil {
 			return err
 		}
-		return remarshal(resp, out)
+		return unwrapProto(resp, spec.responseUnwrap, out)
 
 	default: // ProtocolGraphQL
 		if spec.graphql == nil {
@@ -189,4 +214,27 @@ func (c *AuthorizerAdminClient) executeGraphQL(req *GraphQLRequest) ([]byte, err
 		ExtraHeaders:  c.ExtraHeaders,
 	}
 	return uc.ExecuteGraphQL(req, map[string]string{adminSecretHeader: c.AdminSecret})
+}
+
+// unwrapProto converts a proto response message into out, optionally pulling a
+// single named field out of it first. Marshalling the proto struct with
+// encoding/json (not protojson) is deliberate: it emits int64 as a JSON number,
+// which the hand-written domain types can decode. A missing field leaves out at
+// its zero value, matching how the graphql path treats an absent field.
+func unwrapProto(msg interface{}, field string, out interface{}) error {
+	if out == nil {
+		return nil
+	}
+	if field == "" {
+		return remarshal(msg, out)
+	}
+	var envelope map[string]json.RawMessage
+	if err := remarshal(msg, &envelope); err != nil {
+		return err
+	}
+	raw, ok := envelope[field]
+	if !ok {
+		return nil
+	}
+	return json.Unmarshal(raw, out)
 }
