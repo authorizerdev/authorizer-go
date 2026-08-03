@@ -24,7 +24,7 @@ func protocolClient(t *testing.T, p authorizer.Protocol) *authorizer.AuthorizerC
 	t.Helper()
 	c, err := authorizer.NewAuthorizerClient(clientID, authorizerURL, "", map[string]string{
 		"Origin": authorizerURL,
-	}, authorizer.WithProtocol(p))
+	}, authorizer.WithProtocol(p), authorizer.WithGRPCEndpoint(grpcEndpoint))
 	if err != nil {
 		t.Fatalf("failed to create %s client: %v", p, err)
 	}

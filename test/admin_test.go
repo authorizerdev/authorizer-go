@@ -23,6 +23,7 @@ func adminClient(t *testing.T, p authorizer.Protocol) *authorizer.AuthorizerAdmi
 	t.Helper()
 	c, err := authorizer.NewAuthorizerAdminClient(authorizerURL, adminSecret,
 		authorizer.WithAdminProtocol(p),
+		authorizer.WithAdminGRPCEndpoint(grpcEndpoint),
 		authorizer.WithAdminExtraHeaders(map[string]string{"Origin": authorizerURL}),
 	)
 	if err != nil {

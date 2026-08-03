@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/authorizerdev/authorizer-go/v2"
+	authorizerv1 "github.com/authorizerdev/authorizer-proto-go/authorizer/v1"
 )
 
 // Integration-test target. Overridable via env so the same suite runs against a
@@ -15,6 +16,12 @@ import (
 var (
 	authorizerURL = envOr("AUTHORIZER_TEST_URL", "http://localhost:8080")
 	clientID      = envOr("AUTHORIZER_TEST_CLIENT_ID", "123456")
+	// grpcEndpoint pins the host:port the grpc subtests dial. Without it the
+	// SDK derives the endpoint from authorizerURL's host plus the DEFAULT grpc
+	// port (9091) -- so a suite pointed at a container on a non-default port
+	// would still send its grpc calls to whatever happens to be on 9091,
+	// silently testing a different server. Empty keeps the derived default.
+	grpcEndpoint = envOr("AUTHORIZER_TEST_GRPC", "")
 )
 
 const testPassword = "Abc@123"
@@ -331,6 +338,38 @@ func TestMagicLinkLogin(t *testing.T) {
 // skipIfFgaUnavailable skips an FGA integration test when the target server has
 // the fine-grained authorization engine disabled or no model installed, so the
 // suite stays green on a default (auth-only) deployment.
+// ensureFgaModel writes the authorization model the public FGA tests check
+// against, so they do not depend on test ordering.
+//
+// TestAdminFgaResetLast wipes the store, and Go runs tests in declaration
+// order, so in a full-suite run the public FGA tests used to find no model,
+// take the "authorization check failed" branch of skipIfFgaUnavailable, and
+// silently skip -- meaning check_permissions/list_permissions were never
+// actually exercised except when run in isolation. Seeding here makes them
+// self-sufficient. A server with no FGA engine at all still errors, and those
+// tests still skip, which is the case skipIfFgaUnavailable is really for.
+func ensureFgaModel(t *testing.T) {
+	t.Helper()
+	admin, err := authorizer.NewAuthorizerAdminClient(authorizerURL, adminSecret,
+		authorizer.WithAdminExtraHeaders(map[string]string{"Origin": authorizerURL}))
+	if err != nil {
+		t.Fatalf("admin client for FGA seeding: %v", err)
+	}
+	const dsl = `model
+  schema 1.1
+
+type user
+
+type document
+  relations
+    define can_view: [user]
+    define can_edit: [user]
+`
+	if _, err := admin.FgaWriteModel(&authorizerv1.FgaWriteModelRequest{Dsl: dsl}); err != nil {
+		t.Logf("could not seed FGA model (%v); the test will skip if FGA is unavailable", err)
+	}
+}
+
 func skipIfFgaUnavailable(t *testing.T, err error) {
 	t.Helper()
 	if err == nil {
@@ -352,6 +391,7 @@ func skipIfFgaUnavailable(t *testing.T, err error) {
 }
 
 func TestCheckPermissions(t *testing.T) {
+	ensureFgaModel(t)
 	c := testClient(t)
 	email := uniqueEmail()
 
@@ -404,6 +444,7 @@ func TestCheckPermissions(t *testing.T) {
 }
 
 func TestListPermissions(t *testing.T) {
+	ensureFgaModel(t)
 	c := testClient(t)
 	email := uniqueEmail()
 
