@@ -35,11 +35,15 @@ func outgoingContext(ctx context.Context, headers map[string]string) context.Con
 //
 // The Origin header is auto-injected for the same CSRF reason as ExecuteGraphQL.
 func (c *AuthorizerClient) executeREST(method, path string, body interface{}, perCallHeaders map[string]string, out interface{}) error {
-	return doREST(c.AuthorizerURL, method, path, body, c.ExtraHeaders, perCallHeaders, out)
+	// HTTPClient(), not http.DefaultClient: the REST transport must carry the
+	// same cookie jar as the GraphQL one, or the MFA session cookie set by
+	// signup/login is dropped and SkipMfaSetup/VerifyOtp fail with
+	// "invalid session".
+	return doREST(c.HTTPClient(), c.AuthorizerURL, method, path, body, c.ExtraHeaders, perCallHeaders, out)
 }
 
 // doREST is the shared REST executor used by both the user and admin clients.
-func doREST(baseURL, method, path string, body interface{}, extraHeaders, perCallHeaders map[string]string, out interface{}) error {
+func doREST(client *http.Client, baseURL, method, path string, body interface{}, extraHeaders, perCallHeaders map[string]string, out interface{}) error {
 	var reqBody io.Reader
 	if method == http.MethodPost && body != nil {
 		jsonReq, err := json.Marshal(body)
@@ -70,7 +74,10 @@ func doREST(baseURL, method, path string, body interface{}, extraHeaders, perCal
 		}
 	}
 
-	res, err := http.DefaultClient.Do(httpReq)
+	if client == nil {
+		client = http.DefaultClient
+	}
+	res, err := client.Do(httpReq)
 	if err != nil {
 		return err
 	}

@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/cookiejar"
+	"net/url"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
 )
 
 // AuthorizerClient defines the attributes required to initiate authorizer client
@@ -52,6 +55,18 @@ func (c *AuthorizerClient) HTTPClient() *http.Client {
 		c.httpClient = newHTTPClient()
 	}
 	return c.httpClient
+}
+
+// dialGRPC opens a gRPC connection whose calls share this client's cookie jar,
+// so a session established over gRPC (or over HTTP) survives the next call.
+func (c *AuthorizerClient) dialGRPC() (*grpc.ClientConn, error) {
+	jar := c.HTTPClient().Jar
+	u, err := url.Parse(c.AuthorizerURL)
+	if jar == nil || err != nil || u.Host == "" {
+		return grpcDial(c.AuthorizerURL, c.GRPCEndpoint)
+	}
+	return grpcDial(c.AuthorizerURL, c.GRPCEndpoint,
+		grpc.WithChainUnaryInterceptor(cookieInterceptor(jar, u)))
 }
 
 // ClientOption customizes an AuthorizerClient at construction time.

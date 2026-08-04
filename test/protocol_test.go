@@ -58,14 +58,7 @@ func TestSignUpProfileAcrossProtocols(t *testing.T) {
 			c := protocolClient(t, p)
 			email := uniqueEmail()
 
-			signupRes, err := c.SignUp(&authorizer.SignUpRequest{
-				Email:           &email,
-				Password:        testPassword,
-				ConfirmPassword: testPassword,
-			})
-			if err != nil {
-				t.Fatalf("[%s] SignUp failed: %v", p, err)
-			}
+			signupRes := signUp(t, c, email)
 			if signupRes == nil || signupRes.AccessToken == nil || *signupRes.AccessToken == "" {
 				t.Fatalf("[%s] SignUp: expected non-empty access_token, got %+v", p, signupRes)
 			}
@@ -98,19 +91,10 @@ func TestLoginAcrossProtocols(t *testing.T) {
 			email := uniqueEmail()
 			// Signup over graphql so every protocol's Login has a fresh account.
 			gql := protocolClient(t, authorizer.ProtocolGraphQL)
-			if _, err := gql.SignUp(&authorizer.SignUpRequest{
-				Email:           &email,
-				Password:        testPassword,
-				ConfirmPassword: testPassword,
-			}); err != nil {
-				t.Fatalf("SignUp failed: %v", err)
-			}
+			signUp(t, gql, email)
 
 			c := protocolClient(t, p)
-			loginRes, err := c.Login(&authorizer.LoginRequest{Email: &email, Password: testPassword})
-			if err != nil {
-				t.Fatalf("[%s] Login failed: %v", p, err)
-			}
+			loginRes := login(t, c, email)
 			if loginRes == nil || loginRes.AccessToken == nil || *loginRes.AccessToken == "" {
 				t.Fatalf("[%s] Login: expected non-empty access_token, got %+v", p, loginRes)
 			}
@@ -183,14 +167,7 @@ func TestUpdateProfileAcrossProtocols(t *testing.T) {
 		t.Run(string(p), func(t *testing.T) {
 			email := uniqueEmail()
 			c := protocolClient(t, p)
-			signupRes, err := c.SignUp(&authorizer.SignUpRequest{
-				Email:           &email,
-				Password:        testPassword,
-				ConfirmPassword: testPassword,
-			})
-			if err != nil {
-				t.Fatalf("[%s] SignUp failed: %v", p, err)
-			}
+			signupRes := signUp(t, c, email)
 			authHeader := map[string]string{
 				"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(signupRes.AccessToken)),
 			}

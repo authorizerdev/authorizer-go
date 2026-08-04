@@ -91,7 +91,7 @@ func (c *AuthorizerClient) execute(spec methodSpec, headers map[string]string, o
 		if spec.grpcCall == nil {
 			return unsupportedProtocol(spec.name, c.Protocol, spec.supported())
 		}
-		conn, err := grpcDial(c.AuthorizerURL, c.GRPCEndpoint)
+		conn, err := c.dialGRPC()
 		if err != nil {
 			return err
 		}
