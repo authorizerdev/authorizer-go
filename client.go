@@ -4,7 +4,10 @@ package authorizer
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/cookiejar"
 	"strings"
+	"time"
 )
 
 // AuthorizerClient defines the attributes required to initiate authorizer client
@@ -19,6 +22,36 @@ type AuthorizerClient struct {
 	// GRPCEndpoint overrides the host:port dialed when Protocol is grpc. When
 	// empty it is derived from AuthorizerURL using the gRPC default port.
 	GRPCEndpoint string
+
+	// httpClient is shared across every call on this client and carries a
+	// cookie jar. The jar is REQUIRED, not an optimisation: the MFA offer flow
+	// identifies the pending user by a session cookie the server sets on
+	// signup/login, and SkipMfaSetup / VerifyOtp only resolve it if that cookie
+	// is sent back. Building a fresh http.Client per call, as this SDK used to,
+	// dropped the cookie and made those calls fail with "invalid session" —
+	// i.e. the whole MFA surface was unreachable from Go.
+	httpClient *http.Client
+}
+
+// newHTTPClient builds the shared cookie-aware client. cookiejar.New with a nil
+// options value never returns an error, but the error is handled rather than
+// ignored so a future options change cannot silently produce a jar-less client.
+func newHTTPClient() *http.Client {
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return &http.Client{Timeout: 30 * time.Second}
+	}
+	return &http.Client{Timeout: 30 * time.Second, Jar: jar}
+}
+
+// HTTPClient returns the shared cookie-aware http client, initialising it on
+// first use so a zero-value AuthorizerClient (or one built by an older
+// constructor path) still carries a jar.
+func (c *AuthorizerClient) HTTPClient() *http.Client {
+	if c.httpClient == nil {
+		c.httpClient = newHTTPClient()
+	}
+	return c.httpClient
 }
 
 // ClientOption customizes an AuthorizerClient at construction time.
@@ -76,6 +109,7 @@ func NewAuthorizerClient(clientID, authorizerURL, redirectURL string, extraHeade
 		ClientID:      clientID,
 		ExtraHeaders:  headers,
 		Protocol:      ProtocolGraphQL,
+		httpClient:    newHTTPClient(),
 	}
 	for _, opt := range opts {
 		opt(c)

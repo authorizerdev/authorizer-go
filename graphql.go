@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // GraphQLRequest is object used to make graphql queries
@@ -32,7 +31,7 @@ func (c *AuthorizerClient) ExecuteGraphQL(req *GraphQLRequest, headers map[strin
 		return nil, err
 	}
 
-	client := http.Client{Timeout: 30 * time.Second}
+	client := c.HTTPClient()
 	httpReq, err := http.NewRequest(http.MethodPost, c.AuthorizerURL+"/graphql", bytes.NewReader(jsonReq))
 	if err != nil {
 		return nil, err

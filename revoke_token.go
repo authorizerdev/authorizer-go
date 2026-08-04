@@ -29,7 +29,7 @@ func (c *AuthorizerClient) RevokeToken(req *RevokeTokenInput) (*Response, error)
 		return nil, err
 	}
 
-	client := http.Client{}
+	client := c.HTTPClient()
 	httpReq, err := http.NewRequest(http.MethodPost, c.AuthorizerURL+"/oauth/revoke", bytes.NewReader(jsonReq))
 	if err != nil {
 		return nil, err
