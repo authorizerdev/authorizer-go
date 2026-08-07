@@ -1,7 +1,7 @@
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1 h1:s6hzCXtND/ICdGPTMGk7C+/BFlr2Jg5GyH0NKf4XGXg=
 buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260415201107-50325440f8f2.1/go.mod h1:tvtbpgaVXZX4g6Pn+AnzFycuRK3MOz5HJfEGeEllXYM=
-github.com/authorizerdev/authorizer-proto-go v0.2.0-rc.0 h1:PQGjo4yfxU4V4NXOJj1OjbLKNxRpf3ih2eCdTMmUEkY=
-github.com/authorizerdev/authorizer-proto-go v0.2.0-rc.0/go.mod h1:cVUPv4XVeH3YeoFjfnl+ug/KlUinrGOAUZu3E+sjjHs=
+github.com/authorizerdev/authorizer-proto-go v0.2.0-rc.1 h1:te2ADwG6Xyi1VVB6z3+jz/n1I/gdhqEewZFYfeosfmI=
+github.com/authorizerdev/authorizer-proto-go v0.2.0-rc.1/go.mod h1:brXkT8HCo4XawfZ39ai2TQdgNRVFrYnRd5cSP899wHU=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
