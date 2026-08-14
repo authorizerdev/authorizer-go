@@ -24,6 +24,7 @@ docker-up:
 			$(AUTHORIZER_IMAGE) \
 			--database-type=sqlite \
 			--database-url=test.db \
+			--url=http://localhost:8080 \
 			--jwt-type=HS256 \
 			--jwt-secret=test \
 			--admin-secret=admin \
