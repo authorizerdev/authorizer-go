@@ -151,12 +151,12 @@ func (c *AuthorizerAdminClient) execute(spec adminMethodSpec, out interface{}) e
 		}
 		if spec.restResponse != nil {
 			msg := spec.restResponse()
-			if err := doREST(c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, msg); err != nil {
+			if err := doREST(nil, c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, msg); err != nil {
 				return err
 			}
 			return unwrapProto(msg, spec.responseUnwrap, out)
 		}
-		return doREST(c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, out)
+		return doREST(nil, c.AuthorizerURL, spec.restMethod, spec.restPath, spec.restBody, c.ExtraHeaders, map[string]string{adminSecretHeader: c.AdminSecret}, out)
 
 	case ProtocolGRPC:
 		if spec.grpcCall == nil {

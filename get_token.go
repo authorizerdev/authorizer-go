@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
 
 // GetTokenRequest defines attributes for token request. Only the set (non-nil)
@@ -116,7 +115,7 @@ func (c *AuthorizerClient) GetToken(req *GetTokenRequest) (*TokenResponse, error
 		}
 	}
 
-	client := http.Client{Timeout: 30 * time.Second}
+	client := c.HTTPClient()
 	res, err := client.Do(httpReq)
 	if err != nil {
 		return nil, err

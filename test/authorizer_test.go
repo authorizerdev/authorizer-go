@@ -54,6 +54,68 @@ func uniqueEmail() string {
 	return fmt.Sprintf("test-%d@yopmail.com", rand.Int63())
 }
 
+// boolValue dereferences an optional bool flag, defaulting to false.
+func boolValue(b *bool) bool { return b != nil && *b }
+
+// isMFAOffer reports whether an auth response is server 2.4.0's token-withheld
+// MFA offer: MFA is on by default, so signup/login answer with
+// "Proceed to mfa setup" plus the should_show_totp_screen / should_offer_*
+// flags and NO access token. The token is only issued once the user enrolls a
+// factor or explicitly declines via skip_mfa_setup.
+func isMFAOffer(res *authorizer.AuthTokenResponse) bool {
+	return res != nil &&
+		authorizer.StringValue(res.AccessToken) == "" &&
+		(boolValue(res.ShouldShowTotpScreen) ||
+			boolValue(res.ShouldOfferWebauthnMfaSetup) ||
+			boolValue(res.ShouldOfferEmailOtpMfaSetup) ||
+			boolValue(res.ShouldOfferSmsOtpMfaSetup))
+}
+
+// resolveMFAOffer turns a token-withheld MFA offer into a real auth response by
+// declining the offer, which is what a client that does not want to enroll a
+// second factor must do. It MUST run on the same client that made the
+// signup/login call: the pending user is identified by the MFA session cookie
+// that call received (gRPC carries it as `set-cookie` metadata).
+//
+// A response that is not an MFA offer is returned untouched, so a token that is
+// missing for any other reason still fails the caller's own assertion.
+func resolveMFAOffer(t *testing.T, c *authorizer.AuthorizerClient, email string, res *authorizer.AuthTokenResponse) *authorizer.AuthTokenResponse {
+	t.Helper()
+	if !isMFAOffer(res) {
+		return res
+	}
+	skipped, err := c.SkipMfaSetup(&authorizer.SkipMfaSetupRequest{Email: &email})
+	if err != nil {
+		t.Fatalf("SkipMfaSetup failed while resolving the MFA offer for %s: %v", email, err)
+	}
+	return skipped
+}
+
+// signUp creates a user and returns an auth response that carries the access
+// token, resolving the default MFA offer on the way.
+func signUp(t *testing.T, c *authorizer.AuthorizerClient, email string) *authorizer.AuthTokenResponse {
+	t.Helper()
+	res, err := c.SignUp(&authorizer.SignUpRequest{
+		Email:           &email,
+		Password:        testPassword,
+		ConfirmPassword: testPassword,
+	})
+	if err != nil {
+		t.Fatalf("SignUp failed: %v", err)
+	}
+	return resolveMFAOffer(t, c, email, res)
+}
+
+// login authenticates an existing user, resolving the default MFA offer.
+func login(t *testing.T, c *authorizer.AuthorizerClient, email string) *authorizer.AuthTokenResponse {
+	t.Helper()
+	res, err := c.Login(&authorizer.LoginRequest{Email: &email, Password: testPassword})
+	if err != nil {
+		t.Fatalf("Login failed: %v", err)
+	}
+	return resolveMFAOffer(t, c, email, res)
+}
+
 func TestGetMetaData(t *testing.T) {
 	c := testClient(t)
 
@@ -99,22 +161,9 @@ func TestLogin(t *testing.T) {
 	email := uniqueEmail()
 
 	// Sign up first to create a user
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite for Login): %v", err)
-	}
+	signUp(t, c, email)
 
-	res, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed: %v", err)
-	}
+	res := login(t, c, email)
 
 	if res == nil {
 		t.Fatal("Login returned nil response")
@@ -129,22 +178,8 @@ func TestGetProfile(t *testing.T) {
 	email := uniqueEmail()
 
 	// Sign up and login first
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	res, err := c.GetProfile(map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
@@ -165,22 +200,8 @@ func TestGetSession(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	res, err := c.GetSession(&authorizer.SessionQueryRequest{
 		Roles: []*string{},
@@ -204,22 +225,8 @@ func TestLogout(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	res, err := c.Logout(map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
@@ -240,22 +247,8 @@ func TestValidateJWTToken(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	res, err := c.ValidateJWTToken(&authorizer.ValidateJWTTokenRequest{
 		TokenType: authorizer.TokenTypeAccessToken,
@@ -395,22 +388,8 @@ func TestCheckPermissions(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	headers := map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),
@@ -448,22 +427,8 @@ func TestListPermissions(t *testing.T) {
 	c := testClient(t)
 	email := uniqueEmail()
 
-	_, err := c.SignUp(&authorizer.SignUpRequest{
-		Email:           &email,
-		Password:        testPassword,
-		ConfirmPassword: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("SignUp failed (prerequisite): %v", err)
-	}
-
-	loginRes, err := c.Login(&authorizer.LoginRequest{
-		Email:    &email,
-		Password: testPassword,
-	})
-	if err != nil {
-		t.Fatalf("Login failed (prerequisite): %v", err)
-	}
+	signUp(t, c, email)
+	loginRes := login(t, c, email)
 
 	headers := map[string]string{
 		"Authorization": fmt.Sprintf("Bearer %s", authorizer.StringValue(loginRes.AccessToken)),

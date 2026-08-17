@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 // Protocol selects the wire transport a client uses to talk to authorizer.
@@ -40,7 +42,7 @@ const defaultGRPCPort = "9091"
 // not the HTTP URL's port. An https:// URL (or an explicit :443 host) uses TLS;
 // everything else dials insecurely, matching the typical self-hosted
 // http://host:8080 deployment.
-func grpcDial(authorizerURL, grpcEndpoint string) (*grpc.ClientConn, error) {
+func grpcDial(authorizerURL, grpcEndpoint string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	u, err := url.Parse(authorizerURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid authorizerURL %q: %w", authorizerURL, err)
@@ -67,7 +69,36 @@ func grpcDial(authorizerURL, grpcEndpoint string) (*grpc.ClientConn, error) {
 		host += ":443"
 	}
 
-	return grpc.NewClient(host, grpc.WithTransportCredentials(creds))
+	return grpc.NewClient(host, append([]grpc.DialOption{grpc.WithTransportCredentials(creds)}, opts...)...)
+}
+
+// cookieInterceptor carries the session cookie across gRPC calls. gRPC has no
+// cookie concept, so the server sends its cookies as `set-cookie` header
+// metadata and reads them back from a `cookie` metadata entry. Without this the
+// MFA offer flow is unreachable over gRPC for the same reason it was over
+// HTTP before the jar existed: signup/login hand out an MFA session the next
+// call never replays, and SkipMfaSetup/VerifyOtp answer "invalid session".
+// Cookies are stored in the client's shared jar, so a session started over one
+// protocol is usable from another.
+func cookieInterceptor(jar http.CookieJar, u *url.URL) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		if cookies := jar.Cookies(u); len(cookies) > 0 {
+			pairs := make([]string, 0, len(cookies))
+			for _, c := range cookies {
+				pairs = append(pairs, c.Name+"="+c.Value)
+			}
+			ctx = metadata.AppendToOutgoingContext(ctx, "cookie", strings.Join(pairs, "; "))
+		}
+
+		var header metadata.MD
+		err := invoker(ctx, method, req, reply, cc, append(opts, grpc.Header(&header))...)
+		// Store cookies even when the call failed: a rejected MFA attempt can
+		// still rotate the session.
+		if set := header.Get("set-cookie"); len(set) > 0 {
+			jar.SetCookies(u, (&http.Response{Header: http.Header{"Set-Cookie": set}}).Cookies())
+		}
+		return err
+	}
 }
 
 // stripPort removes a trailing :port from host, leaving the bare host.
