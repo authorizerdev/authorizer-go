@@ -50,6 +50,8 @@ func main() {
 }
 ```
 
+> **Note (Authorizer >= v2.4.10):** FGA conditions — `Condition` on admin tuples (`FgaWriteTuples` / `FgaReadTuples`) and `Context` on `CheckPermissionsRequest` — need a 2.4.10 or newer server. Older servers ignore `Condition` on REST/gRPC and reject it on GraphQL.
+
 > **Note (Authorizer >= v2.3.0):** the server's CSRF guard requires an `Origin` header on state-changing requests. The client sends the Authorizer server's own origin by default, which always passes. If your instance restricts `ALLOWED_ORIGINS`, pass your app's origin instead via `extraHeaders`: `map[string]string{"Origin": "https://your-app.com"}`.
 
 ### Step 3: Use the SDK

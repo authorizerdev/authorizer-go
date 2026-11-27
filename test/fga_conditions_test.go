@@ -12,7 +12,7 @@ import (
 )
 
 // conditionModel extends the shared test model with a time-limited viewer
-// grant. Requires a server newer than 2.4.9 (conditional tuples).
+// grant. Requires server 2.4.10+ (conditional tuples).
 const conditionModel = `model
   schema 1.1
 type user
