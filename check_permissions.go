@@ -25,6 +25,11 @@ type CheckPermissionsRequest struct {
 	// Honored only for super-admin callers or when it equals the caller's own
 	// token subject; rejected otherwise.
 	User string `json:"user,omitempty"`
+	// Context supplies request-time condition parameters (Authorizer newer than 2.4.9).
+	// The server accepts it only from a super-admin that is not using a
+	// delegated token, and never with current_time, which it always supplies
+	// itself; any other caller sending Context is rejected.
+	Context map[string]interface{} `json:"context,omitempty"`
 }
 
 // PermissionCheckResult is the outcome of one permission check, echoing the

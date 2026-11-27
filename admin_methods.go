@@ -20,7 +20,7 @@ const (
 	adminAuditLogFields   = `id actor_id actor_type actor_email action resource_type resource_id ip_address user_agent metadata created_at`
 	adminVerifReqFields   = `id identifier token email expires created_at updated_at nonce redirect_uri`
 	adminFgaModelFields   = `id dsl`
-	adminFgaTupleFields   = `user relation object`
+	adminFgaTupleFields   = `user relation object condition { name context }` // condition: server newer than 2.4.9
 
 	adminClientFields        = `id client_id name description allowed_scopes is_active created_at updated_at`
 	adminTrustedIssuerFields = `id service_account_id name issuer_url key_source_type jwks_url expected_aud subject_claim allowed_subjects issuer_type is_active spiffe_refresh_hint_seconds created_at updated_at`
